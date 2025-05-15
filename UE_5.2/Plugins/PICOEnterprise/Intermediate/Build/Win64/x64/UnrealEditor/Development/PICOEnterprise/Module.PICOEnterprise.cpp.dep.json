@@ -1,0 +1,20 @@
+{
+    "Version": "1.1",
+    "Data": {
+        "Source": "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\picoenterprise\\module.picoenterprise.cpp",
+        "ProvidedModule": "",
+        "PCH": "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\intermediate\\build\\win64\\x64\\picoxr_unreal_52editor\\development\\engine\\sharedpch.engine.shadowerrors.inclorderunreal5_0.h.pch",
+        "Includes": [
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\picoenterprise\\definitions.picoenterprise.h",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\intermediate\\build\\win64\\unrealeditor\\inc\\picoenterprise\\uht\\picoenterprise.init.gen.cpp",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\intermediate\\build\\win64\\unrealeditor\\inc\\picoenterprise\\uht\\pxr_enterpriseapi.gen.cpp",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\source\\picoenterprise\\public\\pxr_enterpriseapi.h",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\intermediate\\build\\win64\\unrealeditor\\inc\\picoenterprise\\uht\\pxr_enterpriseapi.generated.h",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\source\\picoenterprise\\private\\picoenterprise.cpp",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\source\\picoenterprise\\public\\picoenterprise.h",
+            "d:\\ci\\mc\\openxr_unreal2\\xrsdk_unreal\\picoxr_unreal_52\\plugins\\picoenterprise\\source\\picoenterprise\\private\\pxr_enterpriseapi.cpp"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

@@ -1,0 +1,12 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-PICOEnterprise.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"D:\CI\MC\OpenXR_Unreal2\XRSDK_Unreal\PicoXR_Unreal_51\Intermediate\Build\Win64\PicoXR_UnrealEditor\Development\Engine\SharedPCH.Engine.ShadowErrors.InclOrderUnreal5_0.h.obj"
+"D:\CI\MC\OpenXR_Unreal2\XRSDK_Unreal\PicoXR_Unreal_51\Plugins\PICOEnterprise\Intermediate\Build\Win64\UnrealEditor\Development\PICOEnterprise\Module.PICOEnterprise.cpp.obj"
+"D:\CI\MC\OpenXR_Unreal2\XRSDK_Unreal\PicoXR_Unreal_51\Plugins\PICOEnterprise\Intermediate\Build\Win64\UnrealEditor\Development\PICOEnterprise\Default.rc2.res"
+/OUT:"D:\CI\MC\OpenXR_Unreal2\XRSDK_Unreal\PicoXR_Unreal_51\Plugins\PICOEnterprise\Intermediate\Build\Win64\UnrealEditor\Development\PICOEnterprise\UnrealEditor-PICOEnterprise.lib"

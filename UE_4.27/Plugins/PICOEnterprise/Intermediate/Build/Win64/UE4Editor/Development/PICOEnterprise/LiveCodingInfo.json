@@ -1,0 +1,13 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.PICOEnterprise.cpp.obj": [
+			"PICOEnterprise.cpp.obj",
+			"PXR_EnterpriseAPI.cpp.obj"
+		],
+		"Module.PICOEnterprise.gen.cpp.obj": [
+			"PICOEnterprise.init.gen.cpp.obj",
+			"PXR_EnterpriseAPI.gen.cpp.obj"
+		]
+	}
+}
