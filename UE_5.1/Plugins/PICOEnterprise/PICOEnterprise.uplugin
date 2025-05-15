@@ -1,0 +1,39 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "2.4.2",
+	"FriendlyName": "PICOEnterprise",
+	"Description": "",
+	"Category": "Virtual Reality",
+	"CreatedBy": "PICO Technology Co., Ltd",
+	"CreatedByURL": "https://www.picoxr.com/",
+	"DocsURL": "https://developer-global.pico-interactive.com/document/ue4/about-vr",
+	"MarketplaceURL": "",
+	"SupportURL": "https://developer-global.pico-interactive.com/",
+	"EnabledByDefault": true,
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"SupportedTargetPlatforms": [
+		"Win64",
+		"Android"
+	],
+	"Modules": [
+		{
+			"Name": "PICOEnterprise",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Android"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "PICOXR",
+			"Enabled": true
+		}
+	]
+}
