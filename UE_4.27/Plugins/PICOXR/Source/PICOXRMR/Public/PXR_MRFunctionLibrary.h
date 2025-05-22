@@ -28,7 +28,19 @@ public:
 	/// </returns>
 	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
 	static bool PXR_GetAnchorEntityUuid(AActor* BoundActor, FPICOSpatialUUID& OutAnchorUUID,EPICOResult& OutResult);
-	
+	/// <summary>
+	/// Gets the universally unique identifier (UUID) of an anchor entity.
+	/// </summary>
+	/// <param name="AnchorComponent">Specifies the AnchorComponent for which you want to get anchor entity Uuid information.</param>
+	/// <param name="OutAnchorUUID">Returns the UUID of the anchor entity.</param>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
+	static bool PXR_GetAnchorEntityUuidByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID,EPICOResult& OutResult);
 	/// <summary>
 	/// Gets the information about the Bounding Box 2D for a SceneCapture.
 	/// Before calling this method, you need to load SceneCaptures and get the SceneInfos first. The result contains the UUIDs of SceneCaptures loaded.
@@ -262,6 +274,24 @@ public:
 	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
 	static bool PXR_CreateSceneBoundingPolygon(AActor* BoundActor,bool bNeverCreateCollision,bool bFlipPolygon,bool UseWireframe,const FTransform& Transform,const TArray<FVector>& Vertices,UMaterialInterface* DefaultMeshMaterial);
+	/// <summary>
+	///  Creates Scene Bounding Polygon.
+	/// </summary>
+	/// <param name="BoundActor">Specifies the actor bound by polygon.</param>
+	/// <param name="bNeverCreateCollision">True if never create collision, false otherwise.</param>
+	/// <param name="bFlipPolygon"> True if you want to flip polygon, false otherwise. It is recommend to be ture in Floor type, otherwise the orientation is down, which may affect rendering and collision.</param>	
+	/// <param name="UVAdjustment"> Used to adjust the scaling/rotation/offset of the UVs.</param>
+	/// <param name="Transform">The transform of polygon.</param>
+	/// <param name="Vertices">The set of vertices.</param>
+	/// <param name="DefaultMeshMaterial"> Default mesh material.</param>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	static bool PXR_CreateSceneBoundingPolygonWithUVAdjustment(AActor* BoundActor,bool bNeverCreateCollision,bool bFlipPolygon,const FPICOUVAdjustment& UVAdjustment,const FTransform& Transform,const TArray<FVector>& Vertices,UMaterialInterface* DefaultMeshMaterial);
 
 	/// <summary>
 	/// Changes Spatial Mesh's Lod Setting.

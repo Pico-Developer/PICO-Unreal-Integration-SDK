@@ -7,12 +7,12 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 <root xmlns:android="http://schemas.android.com/apk/res/android">
 	<init>
         <log text="PICOEnterprise init"/>
-        <log text="PICOEnterprise SDK Version = UE_3.1.2"/>
+        <log text="PICOEnterprise SDK Version = UE_3.2.3"/>
     </init>
 	
 	<androidManifestUpdates>
 		<addElements tag="application">
-			<meta-data android:name="pvr.tobsdk.version" android:value="UE_3.1.2" />
+			<meta-data android:name="pvr.tobsdk.version" android:value="UE_3.2.3" />
 			<meta-data android:name="pico_advance_interface" android:value="0"/>
 		</addElements>
 	</androidManifestUpdates>

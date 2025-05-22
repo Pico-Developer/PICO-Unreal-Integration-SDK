@@ -17,7 +17,7 @@ public:
 
 	UPICOSpatialMeshComponent(const FObjectInitializer& ObjectInitializer);
 
-	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintPure, Category = "PICO XR Toolkit")
 	EPICOSemanticLabel GetSemanticByIndex(int32 Index);
 
 	void AddAnchorToSceneLabel(int32 Index,EPICOSemanticLabel SceneLabel);

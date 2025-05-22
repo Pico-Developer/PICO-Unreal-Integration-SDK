@@ -36,7 +36,9 @@ public class PICOXRMR : ModuleRules
                 "PICOXRInput",
                 "PXRPlugin",
                 "ProceduralMeshComponent",
-                "MRMesh"
+                "MRMesh",
+                "JsonUtilities",
+                "Json"
             });
 
         PrivateIncludePaths.AddRange(

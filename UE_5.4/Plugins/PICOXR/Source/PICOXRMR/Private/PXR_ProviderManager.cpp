@@ -146,7 +146,8 @@ void IPXR_BaseProvider::PXR_PollFuture()
 	FuturePollInfoEXT.type = PxrStructureType::PXR_TYPE_FUTURE_POLL_INFO_EXT;
 	PxrFuturePollResultEXT FuturePollResultEXT = {};
 	FuturePollResultEXT.type = PxrStructureType::PXR_TYPE_FUTURE_POLL_RESULT_EXT;
-
+	PxrFuturePollResultAndProgress FuturePollResultAndProgressEXT = {};
+	FuturePollResultAndProgressEXT.type = PxrStructureType::PXR_TYPE_FUTURE_POLL_RESULT_EXT;
 	PXR_LOGV(PxrMR, "Provider PollFuture Frame:%d", FPICOProviderManager::GetNextGameFrameNumber());
 
 	uint64 LeftMessageCount = 0;
@@ -166,35 +167,78 @@ void IPXR_BaseProvider::PXR_PollFuture()
 
 		FuturePollInfoEXT.future = CurrentMessage.MessageHandle.Value;
 		FuturePollInfoEXT.type = PxrStructureType::PXR_TYPE_FUTURE_POLL_INFO_EXT;
-		const bool bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().PollFutureEXT(&FuturePollInfoEXT,&FuturePollResultEXT));
-		PXR_LOGV(PxrMR, "futurehandle:%llu", FuturePollInfoEXT.future);
 
-		if (!bResult)
+		if (CurrentMessage.HasProgress)
 		{
-			PXR_LOGV(PxrMR, "Provider PollFuture failed at:%d", FuturePollInfoEXT.future);
-		}
+			const bool bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().PollFutureWithProgress(&FuturePollInfoEXT,&FuturePollResultAndProgressEXT));
+			PXR_LOGV(PxrMR, "futurehandle:%llu", FuturePollInfoEXT.future);
 
-		if (FuturePollResultEXT.state == PxrFutureStateEXT::PXR_FUTURE_STATE_READY_EXT
-			&& FutureToDelegateMap.Contains(CurrentMessage.Uuid))
-		{
-			PXR_LOGV(PxrMR, "Future:%llu is Ready", CurrentMessage.Uuid);
-			FutureToDelegateMap[CurrentMessage.Uuid].ExecuteIfBound(CurrentMessage.MessageHandle);
-			FutureToDelegateMap.Remove(CurrentMessage.Uuid);
-			PXR_LOGV(PxrMR, "FutureToDelegateMap.Remove %llu Finished", CurrentMessage.Uuid);
+			if (!bResult)
+			{
+				PXR_LOGV(PxrMR, "Provider PollFuture failed at:%d", FuturePollInfoEXT.future);
+			}
+
+			if (FutureToDelegateWithProgressMap.Contains(CurrentMessage.Uuid))
+			{
+				if (FuturePollResultAndProgressEXT.progress!=0||FuturePollResultAndProgressEXT.state == PxrFutureStateEXT::PXR_FUTURE_STATE_READY_EXT)
+				{
+					EFutureState state =static_cast<EFutureState>(FuturePollResultAndProgressEXT.state);
+
+					FutureToDelegateWithProgressMap[CurrentMessage.Uuid].ExecuteIfBound(CurrentMessage.MessageHandle,FuturePollResultAndProgressEXT.progress,state);
+				}
+
+				if (FuturePollResultAndProgressEXT.state == PxrFutureStateEXT::PXR_FUTURE_STATE_READY_EXT)
+				{
+					PXR_LOGV(PxrMR, "Future:%llu is Ready", CurrentMessage.Uuid);
+					FutureToDelegateWithProgressMap.Remove(CurrentMessage.Uuid);
+					PXR_LOGV(PxrMR, "FutureToDelegateMap.Remove %llu Finished", CurrentMessage.Uuid);
+				}
+				else
+				{
+					LeftMessageCount++;
+					if (!hasFoundFrameBarrier)
+					{
+						CurrentMessage.IsFrameBarrier = true;
+						hasFoundFrameBarrier = true;
+						PXR_LOGV(PxrMR, "Provider has Set FoundFrameBarrier");
+					}
+					FutureQueueForProviders.Enqueue(CurrentMessage);
+				}
+			}
+
+			PXR_LOGV(PxrMR, "Provider PollFuture LeftMessageCount:%d,FutureToDelegateMap:%d", LeftMessageCount, FutureToDelegateMap.Num());
 		}
 		else
 		{
-			LeftMessageCount++;
-			if (!hasFoundFrameBarrier)
+			const bool bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().PollFutureEXT(&FuturePollInfoEXT,&FuturePollResultEXT));
+			PXR_LOGV(PxrMR, "futurehandle:%llu", FuturePollInfoEXT.future);
+
+			if (!bResult)
 			{
-				CurrentMessage.IsFrameBarrier = true;
-				hasFoundFrameBarrier = true;
-				PXR_LOGV(PxrMR, "Provider has Set FoundFrameBarrier");
+				PXR_LOGV(PxrMR, "Provider PollFuture failed at:%d", FuturePollInfoEXT.future);
 			}
-			FutureQueueForProviders.Enqueue(CurrentMessage);
+
+			if (FuturePollResultEXT.state == PxrFutureStateEXT::PXR_FUTURE_STATE_READY_EXT
+				&& FutureToDelegateMap.Contains(CurrentMessage.Uuid))
+			{
+				PXR_LOGV(PxrMR, "Future:%llu is Ready", CurrentMessage.Uuid);
+				FutureToDelegateMap[CurrentMessage.Uuid].ExecuteIfBound(CurrentMessage.MessageHandle);
+				FutureToDelegateMap.Remove(CurrentMessage.Uuid);
+				PXR_LOGV(PxrMR, "FutureToDelegateMap.Remove %llu Finished", CurrentMessage.Uuid);
+			}
+			else
+			{
+				LeftMessageCount++;
+				if (!hasFoundFrameBarrier)
+				{
+					CurrentMessage.IsFrameBarrier = true;
+					hasFoundFrameBarrier = true;
+					PXR_LOGV(PxrMR, "Provider has Set FoundFrameBarrier");
+				}
+				FutureQueueForProviders.Enqueue(CurrentMessage);
+			}
 		}
 	}
-	PXR_LOGV(PxrMR, "Provider PollFuture LeftMessageCount:%d,FutureToDelegateMap:%d", LeftMessageCount, FutureToDelegateMap.Num());
 }
 
 bool IPXR_BaseProvider::GetSpatialEntityLocation(const FPICOSpatialHandle& SnapshotHandle, const FPICOSpatialHandle& EntityHandle, FTransform& Transform, const FTransform& TrackingToWorld,const FQuat& BaseOrientation, const FVector& BaseOffsetInMeters, float WorldToMetersScale)
@@ -811,6 +855,18 @@ bool IPXR_BaseProvider::AddPollFutureRequirement(const FPICOSpatialHandle& Futur
 	return FutureQueueForProviders.Enqueue(cFutureMessage);
 }
 
+bool IPXR_BaseProvider::AddPollFutureWithProgressRequirement(const FPICOSpatialHandle& FutureHandle, const FPICOPollFutureWithProgressDelegate& Delegate)
+{
+	FFutureMessage cFutureMessage;
+	cFutureMessage.MessageHandle = FutureHandle;
+	cFutureMessage.Uuid = FPICOProviderManager::GetUUID();
+	cFutureMessage.HasProgress=true;
+	FutureToDelegateWithProgressMap.Add(cFutureMessage.Uuid, Delegate);
+	PXR_LOGV(PxrMR, "AddPollFutureRequirement:%llu cFutureMessage.Uuid:%llu", FutureHandle.Value, cFutureMessage.Uuid);
+	PXR_LOGV(PxrMR, "FutureToDelegateMap:%d", FutureToDelegateMap.Num());
+	return FutureQueueForProviders.Enqueue(cFutureMessage);
+}
+
 bool FPICOProviderManager::PXR_CreateSenseDataProvider(const FPICOSenseDataProviderCreateInfoBase& createInfo)
 {
 	switch (createInfo.Type)
@@ -1397,7 +1453,7 @@ bool PXR_AnchorProvider::IsAnchorValid(AActor* BoundActor)
 	return true;
 }
 
-bool PXR_AnchorProvider::IsAnchorValid(UPICOAnchorComponent* AnchorComponent)
+bool PXR_AnchorProvider::IsAnchorValid(const UPICOAnchorComponent* AnchorComponent)
 {
 	if (!IsValid(AnchorComponent) || !AnchorComponent->IsAnchorValid())
 	{
@@ -1487,6 +1543,29 @@ bool PXR_AnchorProvider::GetAnchorEntityUUIDLegacy(AActor* BoundActor, FPICOSpat
 	}
 
 	UPICOAnchorComponent* AnchorComponent = GetAnchorComponent(BoundActor);
+	FPICOSpatialHandle AnchorHandle = AnchorComponent->GetAnchorHandle();
+	PxrUUid PxrAnchorUUID;
+	EPICOResult Result = FPICOProviderManager::CastToPICOResult(FPICOXRHMDModule::GetPluginWrapper().GetAnchorEntityUuid(AnchorHandle.GetValue(), &PxrAnchorUUID));
+
+	PXR_LOGV(PxrMR, "GetAnchorEntityUUIDLegacy Call PxrAPI Result[%d], Handle[%llu]", (int32)Result, (uint64)AnchorHandle.GetValue());
+	if (PXR_FAILURE(Result))
+	{
+		return false;
+	}
+
+	OutAnchorUUID = PxrAnchorUUID.value;
+
+	PXR_LOGV(PxrMR, "GetAnchorEntityUUIDLegacy AnchorUUID[%s]", *OutAnchorUUID.ToString());
+	return true;
+}
+
+bool PXR_AnchorProvider::GetAnchorEntityUUIDLegacyByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID)
+{
+	if (!IsAnchorValid(AnchorComponent))
+	{
+		return false;
+	}
+
 	FPICOSpatialHandle AnchorHandle = AnchorComponent->GetAnchorHandle();
 	PxrUUid PxrAnchorUUID;
 	EPICOResult Result = FPICOProviderManager::CastToPICOResult(FPICOXRHMDModule::GetPluginWrapper().GetAnchorEntityUuid(AnchorHandle.GetValue(), &PxrAnchorUUID));
@@ -1744,6 +1823,25 @@ bool PXR_AnchorProvider::GetAnchorEntityUUID(AActor* BoundActor, FPICOSpatialUUI
 	return PXRP_SUCCESS(Result);
 }
 
+bool PXR_AnchorProvider::GetAnchorEntityUUIDByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID, EPICOResult& OutResult)
+{
+	if (!IsAnchorValid(AnchorComponent))
+	{
+		return false;
+	}
+
+	FPICOSpatialHandle AnchorHandle = AnchorComponent->GetAnchorHandle();
+	PxrUUid PxrAnchorUUID;
+	int Result = FPICOXRHMDModule::GetPluginWrapper().GetAnchorUuid(AnchorHandle.GetValue(), &PxrAnchorUUID);
+
+	PXR_LOGV(PxrMR, "GetAnchorEntityUUID Call PxrAPI Result[%d], Handle[%llu]", Result, AnchorHandle.GetValue());
+	OutAnchorUUID = PxrAnchorUUID.value;
+	OutResult =FPICOProviderManager::CastToPICOResult(static_cast<PxrResult>(Result));
+
+	PXR_LOGV(PxrMR, "GetAnchorEntityUUID AnchorUUID[%s]", *OutAnchorUUID.ToString());
+	return PXRP_SUCCESS(Result);
+}
+
 bool PXR_AnchorProvider::GetAnchorPose(UPICOAnchorComponent* AnchorComponent, FTransform& OutAnchorPose,EPICOResult& OutResult)
 {
 	if (!IsAnchorValid(AnchorComponent))
@@ -1810,6 +1908,58 @@ bool PXR_AnchorProvider::UpdateAnchor(UPICOAnchorComponent* AnchorComponent,EPIC
 	AActor* BoundActor = AnchorComponent->GetOwner();
 	BoundActor->SetActorLocationAndRotation(AnchorTransform.GetLocation(), AnchorTransform.GetRotation());
 	return true;
+}
+
+bool PXR_AnchorProvider::UploadSpatialAnchorAsync(AActor* BoundActor, const FPICOPollFutureWithProgressDelegate& Delegate,EPICOResult& Result)
+{
+	if (!IsAnchorValid(BoundActor))
+	{
+		PXR_LOGV(PxrMR, "ShareSpatialAnchor Actor is Invalid: Actor[%s]", IsValid(BoundActor) ? *BoundActor->GetName() : TEXT("nullptr"));
+		return false;
+	}
+
+	UPICOAnchorComponent* AnchorComponent = GetAnchorComponent(BoundActor);
+
+	FPICOSpatialHandle Handle;
+	PxrSpatialAnchorShareInfo SpatialAnchorShareInfo = {};
+	SpatialAnchorShareInfo.type = PxrStructureType::PXR_TYPE_SPATIAL_ANCHOR_SHARE_INFO;
+	SpatialAnchorShareInfo.anchor = AnchorComponent->GetAnchorHandle();
+	PXR_LOGV(PxrMR, "SpatialAnchorShareInfo.anchor:%llu", SpatialAnchorShareInfo.anchor);
+	int pxrResult=FPICOXRHMDModule::GetPluginWrapper().ShareSpatialAnchorAsync(ProviderHandle,&SpatialAnchorShareInfo,&Handle.Value);
+	bool bResult = PXRP_SUCCESS(pxrResult);
+
+	Result=FPICOProviderManager::CastToPICOResult(static_cast<PxrResult>(pxrResult));
+	
+	PXR_LOGV(PxrMR, "ShareSpatialAnchorAsync bResult:%d", bResult);
+
+	if (bResult)
+	{
+		bResult = AddPollFutureWithProgressRequirement(Handle, Delegate);
+	}
+
+	return bResult;
+}
+
+bool PXR_AnchorProvider::DownloadSharedSpatialAnchorWithProgressAsync(const FPICOSpatialUUID& UUID, const FPICOPollFutureWithProgressDelegate& Delegate,EPICOResult& Result)
+{
+	bool bResult = false;
+	FPICOSpatialHandle Handle;
+	PxrSharedSpatialAnchorDownloadInfo cSenseDataQueryInfoBD = {};
+	cSenseDataQueryInfoBD.type = PxrStructureType::PXR_TYPE_SPATIAL_ANCHOR_DOWNLOAD_INFO;
+
+	PXR_LOGV(PxrMR, "SpatialAnchorShareInfo.uuid:%s", *UUID.ToString());
+
+	FMemory::Memcpy(cSenseDataQueryInfoBD.uuid.value, UUID.UUIDArray);
+	int pxrResult=FPICOXRHMDModule::GetPluginWrapper().DownloadSharedSpatialAnchorAsync(ProviderHandle,&cSenseDataQueryInfoBD,&Handle.Value);
+	bResult = PXRP_SUCCESS(pxrResult);
+	Result=FPICOProviderManager::CastToPICOResult(static_cast<PxrResult>(pxrResult));
+	if (bResult)
+	{
+		bResult = AddPollFutureWithProgressRequirement(Handle, Delegate);
+	}
+
+	return bResult;
+
 }
 
 bool PXR_AnchorProvider::CreateAnchorEntityLegacy(AActor* BoundActor, const FTransform& AnchorEntityTransform, float Timeout, const FPICOCreateAnchorEntityDelegate& Delegate, EPICOResult& OutResult)

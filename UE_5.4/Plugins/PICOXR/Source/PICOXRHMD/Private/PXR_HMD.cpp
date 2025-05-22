@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PXR_HMD.h"
 
@@ -1968,7 +1968,7 @@ bool FPICOXRHMD::InitializeSession()
 
 	{
 		//SetAppEngineInfo2
-		FString UnrealSDKVersion = "UE5_3.1.2";
+		FString UnrealSDKVersion = "UE5_3.2.3";
 		FString UnrealVersion = FString::FromInt(ENGINE_MINOR_VERSION);
 		UnrealSDKVersion = UnrealSDKVersion + UnrealVersion;
 		PXR_LOGI(PxrUnreal, "%s,xrVersion:%s", PLATFORM_CHAR(*FEngineVersion::Current().ToString()), PLATFORM_CHAR(*UnrealSDKVersion));

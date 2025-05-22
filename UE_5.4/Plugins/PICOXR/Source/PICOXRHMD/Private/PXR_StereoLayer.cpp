@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PXR_StereoLayer.h"
 
@@ -16,6 +16,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "XRThreadUtils.h"
 #include "PXR_GameFrame.h"
+#include "PXR_StereoLayersFlagsSupplier.h"
 
 
 
@@ -960,7 +961,9 @@ const void FPICOXRStereoLayer::SubmitLayer_RHIThread(const FGameSettings* Settin
 		FPICOXRHMDModule::GetPluginWrapper().SubmitLayer((PxrLayerHeader*)&layerProjection);
 	}
 	else
-	{			
+	{
+		int LayerFlags = FPICOXRStereoLayersFlagsSupplier::Get()->GetPxrLayerFlags(LayerDesc.Flags);
+		
 		if (!Settings->bApplyColorScaleAndOffsetToAllLayers || bSplashLayer)
 		{
 			for (int32 i = 0; i < 4; i++)
@@ -973,6 +976,10 @@ const void FPICOXRStereoLayer::SubmitLayer_RHIThread(const FGameSettings* Settin
 		FTransform BaseTransform = FTransform::Identity;
 		uint32 Flags = 0;
 		Flags |= bMRCLayer ? (1 << 30) : 0;
+		Flags |= LayerFlags;
+
+		PXR_LOGV(PxrUnreal, "Submit StereoLayer Flag is 0x%08x",Flags);
+
 		FVector LocationScaleInv(Frame->WorldToMetersScale);
 		FVector LocationScale = LocationScaleInv.Reciprocal();
 		PxrVector3f Scale = ToPxrVector3f(GetLayerScale() * LocationScale);

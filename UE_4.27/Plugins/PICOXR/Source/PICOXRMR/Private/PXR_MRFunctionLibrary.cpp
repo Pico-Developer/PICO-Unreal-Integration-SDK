@@ -16,6 +16,15 @@ bool UPICOXRMRFunctionLibrary::PXR_GetAnchorEntityUuid(AActor* BoundActor, FPICO
 	return PXR_AnchorProvider::GetInstance()->GetAnchorEntityUUID(BoundActor, OutAnchorUUID,OutResult);
 }
 
+bool UPICOXRMRFunctionLibrary::PXR_GetAnchorEntityUuidByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID, EPICOResult& OutResult)
+{
+	if (FPICOProviderManager::ShouldUseLegacyMR())
+	{
+		return  PXR_AnchorProvider::GetInstance()->GetAnchorEntityUUIDLegacyByComponent(AnchorComponent, OutAnchorUUID);
+	}
+	return PXR_AnchorProvider::GetInstance()->GetAnchorEntityUUIDByComponent(AnchorComponent, OutAnchorUUID,OutResult);
+}
+
 bool UPICOXRMRFunctionLibrary::PXR_GetSceneBoundingBox2D(const FPICOSpatialUUID& UUID, FPICOBoundingBox2D& Box2D)
 {
 	if (FPICOProviderManager::ShouldUseLegacyMR())
@@ -347,5 +356,96 @@ bool UPICOXRMRFunctionLibrary::PXR_CreateSceneBoundingPolygon(AActor* BoundActor
 			
 	MRMeshComponent->UpdateMesh(Transform.GetLocation(), Transform.GetRotation(), Transform.GetScale3D(), Vertices, Indices);
 	
+	return true;
+}
+
+bool UPICOXRMRFunctionLibrary::PXR_CreateSceneBoundingPolygonWithUVAdjustment(AActor* BoundActor, bool bNeverCreateCollision, bool bFlipPolygon, const FPICOUVAdjustment& UVAdjustment, const FTransform& Transform, const TArray<FVector>& BoundaryVertices, UMaterialInterface* DefaultMeshMaterial)
+{
+	auto MRMeshComponent = NewObject<UProceduralMeshComponent>(BoundActor);
+
+	if (!IsValid(BoundActor) || !BoundaryVertices.Num() || !DefaultMeshMaterial)
+	{
+		return false;
+	}
+
+	MRMeshComponent->SetUsingAbsoluteLocation(true);
+	MRMeshComponent->SetUsingAbsoluteRotation(true);
+	MRMeshComponent->SetUsingAbsoluteScale(true);
+
+	MRMeshComponent->SetMaterial(0, DefaultMeshMaterial);
+	MRMeshComponent->SetupAttachment(BoundActor->GetRootComponent());
+	MRMeshComponent->RegisterComponent();
+
+	auto Vertices = BoundaryVertices;
+	const auto NumPolygons = Vertices.Num();
+	TArray<int32> Indices;
+	TArray<FVector> Normals;
+	TArray<FLinearColor> VertexColors;
+	TArray<FProcMeshTangent> Tangents;
+	TArray<FVector2D> UV0;
+	Normals.Reserve(NumPolygons);
+	UV0.Reserve(NumPolygons);
+	Indices.Reserve(3 * NumPolygons);
+	const int Index1 = bFlipPolygon ? 2 : 1;
+	const int Index2 = bFlipPolygon ? 1 : 2;
+	const FVector Normal = -FVector::XAxisVector;
+
+	for (auto Index = 0; Index < NumPolygons; ++Index)
+	{
+		Indices.Add(0);
+		Indices.Add((Index + Index1) % NumPolygons);
+		Indices.Add((Index + Index2) % NumPolygons);
+		Normals.Push(Normal);
+	}
+
+	// Calculate UV coordinates
+	// First, find the bounding box of the vertices
+	FVector MinBounds(FLT_MAX, FLT_MAX, FLT_MAX);
+	FVector MaxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	for (const auto& Vertex : Vertices)
+	{
+		// Manually update the minimum bounds
+		if (Vertex.X < MinBounds.X) MinBounds.X = Vertex.X;
+		if (Vertex.Y < MinBounds.Y) MinBounds.Y = Vertex.Y;
+		if (Vertex.Z < MinBounds.Z) MinBounds.Z = Vertex.Z;
+
+		// Manually update the maximum bounds
+		if (Vertex.X > MaxBounds.X) MaxBounds.X = Vertex.X;
+		if (Vertex.Y > MaxBounds.Y) MaxBounds.Y = Vertex.Y;
+		if (Vertex.Z > MaxBounds.Z) MaxBounds.Z = Vertex.Z;
+	}
+
+	// Calculate the size of the bounding box
+	FVector BoundsSize = MaxBounds - MinBounds;
+
+	// Calculate UV coordinates for each vertex
+	for (const auto& Vertex : Vertices)
+	{
+		// Map the vertex position to the [0, 1] range
+		FVector2D UV;
+#if WITH_EDITOR
+		UV.X = (Vertex.X - MinBounds.X) / BoundsSize.X;
+		UV.Y = bFlipPolygon? 1 - (Vertex.Y - MinBounds.Y) / BoundsSize.Y : (Vertex.Y - MinBounds.Y) / BoundsSize.Y;
+
+#else
+		UV.X = (Vertex.Y - MinBounds.Y) / BoundsSize.Y;
+		UV.Y = bFlipPolygon? 1 - (Vertex.Z - MinBounds.Z) / BoundsSize.Z : (Vertex.Z - MinBounds.Z) / BoundsSize.Z;
+#endif
+
+		float rotationInRadians = FMath::DegreesToRadians(UVAdjustment.Rotation);
+		float cosAngle = FMath::Cos(rotationInRadians);
+		float sinAngle = FMath::Sin(rotationInRadians);
+		FVector2D rotatedUV;
+		rotatedUV.X = UV.X * cosAngle - UV.Y * sinAngle;
+		rotatedUV.Y = UV.X * sinAngle + UV.Y * cosAngle;
+		
+		UV = rotatedUV * UVAdjustment.Scale + UVAdjustment.Offset;
+		UV0.Add(UV);
+	}
+
+	MRMeshComponent->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, VertexColors, Tangents, !bNeverCreateCollision);
+	MRMeshComponent->SetWorldLocation(Transform.GetLocation());
+	MRMeshComponent->SetWorldRotation(Transform.GetRotation());
+
 	return true;
 }

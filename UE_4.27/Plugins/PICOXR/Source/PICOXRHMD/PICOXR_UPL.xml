@@ -9,7 +9,6 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 	<!-- init section is always evaluated once per architecture -->
 	<init>
     <log text="PICOXRHMD init"/>
-    <setBoolFromProperty result="bUseAdvanceInterface" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bUseAdvanceInterface" default="false"/>
     <setBoolFromProperty result="bEnablePSensor" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bEnablePSensor" default="false"/>
     <setStringFromProperty result="HandTrackingSupport" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="HandTrackingSupport" default="ControllersOnly"/>
 	<setBoolFromProperty result="bUsingOSSplash" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bUsingOSSplash" default="false"/>
@@ -55,9 +54,9 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
     <addAttribute tag="activity"  name="android:hardwareAccelerated" value="false" />
     <addElements tag="application">
       <meta-data android:name="pvr.app.type" android:value="vr" />
-	  <meta-data android:name="pvr.sdk.version" android:value="UE4_3.1.2" />
+	  <meta-data android:name="pvr.sdk.version" android:value="UE4_3.2.3" />
       <meta-data android:name="pxr.sdk.2dloading.flag" android:value="system" />
-      <meta-data android:name="pxr.sdk.version_code" android:value="5120" />
+      <meta-data android:name="pxr.sdk.version_code" android:value="5130" />
     </addElements>
 		
     <!-- Add MR Flag -->
@@ -176,14 +175,7 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 		    </addElements>
 		</false>
 	</if>
-		
-    <if condition="bUseAdvanceInterface">
-      <true>
-        <addElements tag="application">
-          <meta-data android:name="pico_advance_interface" android:value="0"/>
-        </addElements>
-      </true>
-    </if>
+    
       <!-- Add Hand Tracking Flag -->
     <setBoolIsEqual result="bControllersOnly" arg1="$S(HandTrackingSupport)" arg2="ControllersOnly"/>
     <setBoolIsEqual result="bControllersAndHands" arg1="$S(HandTrackingSupport)" arg2="ControllersAndHands"/>

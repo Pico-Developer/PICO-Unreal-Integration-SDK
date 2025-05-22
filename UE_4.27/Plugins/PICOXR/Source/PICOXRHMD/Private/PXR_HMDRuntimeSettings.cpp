@@ -33,7 +33,6 @@ UPICOXRSettings::UPICOXRSettings(const FObjectInitializer& ObjectInitializer)
 	bEnableEyeTrackingCalibration(false),
 	bEnableFaceTracking(false),
 	bEnableBodyTracking(false),
-	bUseAdvanceInterface(false),
 	bUseContentProtect(false),
 	bSplashScreenAutoShow(true),
 	refreshRate(ERefreshRate::Default),

@@ -288,7 +288,11 @@ namespace Pxr_Audio
 			}
 			else
 			{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+				Audio::ArrayAddInPlace(InputPacketUnreal.AudioBuffer, OutputPacketPico.AudioBuffer);
+#else
 				Audio::MixInBufferFast(InputPacketUnreal.AudioBuffer, OutputPacketPico.AudioBuffer, 1.0f);
+#endif
 			}
 		}
 #pragma endregion FAmbisonicsTranscoder_Impl

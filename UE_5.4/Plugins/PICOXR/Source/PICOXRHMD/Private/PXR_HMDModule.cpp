@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PXR_HMDModule.h"
 #include "PXR_HMD.h"
@@ -10,6 +10,7 @@
 #include "PXR_Log.h"
 #include "Misc/Paths.h"
 #include "Engine/RendererSettings.h"
+#include "PXR_StereoLayersFlagsSupplier.h"
 
 #if WITH_EDITOR
 #include "PropertyEditorModule.h"
@@ -63,6 +64,19 @@ void FPICOXRHMDModule::StartupModule()
 	FCoreDelegates::OnFEngineLoopInitComplete.AddRaw(this,&FPICOXRHMDModule::RegisterSettings);
 	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("PICOXR"))->GetBaseDir(), TEXT("Shaders"));
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/PICOXR"), PluginShaderDir);
+
+	auto StereoLayersFlagsSupplier = FPICOXRStereoLayersFlagsSupplier::Get();
+	if (StereoLayersFlagsSupplier.IsValid())
+	{
+		IModularFeatures::Get().RegisterModularFeature(IStereoLayersFlagsSupplier::GetModularFeatureName(), StereoLayersFlagsSupplier.Get());
+		TArray<IStereoLayersFlagsSupplier*> FlagsSuppliers = IModularFeatures::Get().GetModularFeatureImplementations<IStereoLayersFlagsSupplier>(IStereoLayersFlagsSupplier::GetModularFeatureName());
+		if (FlagsSuppliers.Num() > 1)
+		{
+			UE_LOG(LogHMD, Log, TEXT("Too many filters detected!"));
+			IModularFeatures::Get().UnregisterModularFeature(IStereoLayersFlagsSupplier::GetModularFeatureName(), StereoLayersFlagsSupplier.Get());
+		}
+	}
+	
 }
 
 void FPICOXRHMDModule::ShutdownModule()
@@ -78,6 +92,12 @@ void FPICOXRHMDModule::ShutdownModule()
 	{
 		FPlatformProcess::FreeDllHandle(PVRPluginHandle);
 		PVRPluginHandle = nullptr;
+	}
+
+	auto StereoLayersFlagsSupplier = FPICOXRStereoLayersFlagsSupplier::Get();
+	if (StereoLayersFlagsSupplier.IsValid())
+	{
+		IModularFeatures::Get().UnregisterModularFeature(IStereoLayersFlagsSupplier::GetModularFeatureName(), StereoLayersFlagsSupplier.Get());
 	}
 #endif
 }

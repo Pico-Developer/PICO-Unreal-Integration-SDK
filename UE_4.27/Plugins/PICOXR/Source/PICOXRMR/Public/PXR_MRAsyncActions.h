@@ -38,6 +38,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSpatialMeshActionFailure
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSceneCapturesActionSuccess,EPICOResult, Result, const TArray<FPICOMRSceneInfo>&, SceneInfos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSceneCapturesActionFailure,EPICOResult, Result);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICODownloadSharedSpatialAnchorActionResult, EPICOResult, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICOUploadSpatialAnchorActionSuccess, EPICOResult, Result,const UPICOAnchorComponent*, AnchorComponent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICOUploadSpatialAnchorActionFailure, EPICOResult, Result);
+
+DECLARE_DYNAMIC_DELEGATE_OneParam(FPICOUploadProgress,int32, Progress);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FPICODownloadProgress,int32, Progress,FPICOSpatialUUID,UUID);
+
+
 //////////////////////////////////////////////////////////////////////////
 /// Spatial Anchor
 //////////////////////////////////////////////////////////////////////////
@@ -192,6 +201,88 @@ private:
 
 };
 
+
+/* UAsyncTask_UploadAnchorEntity
+ *****************************************************************************/
+UCLASS()
+class PICOXRMR_API UPICOUploadSpatialAnchor_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+	/// <summary>
+	/// Make specified anchor entities persistent, which means saving achor entities to specified location. You can choose local storage location or cloud storage location.
+	/// </summary>
+	/// <param name="BoundActor">Specifies the bound Actors of the to-be-persisted anchor entities.</param>
+	/// <param name="PersistLocation">The location that the anchor entities are saved to:
+	/// - Persist Location Local: device's local storage.
+	/// - Persist Location Shared: cloud storage.
+	/// </param>
+	/// <returns>
+	/// - Result: Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// - AnchorComponent: Associated with an Actor. Each component updates the anchor entity's pose to the Actor during each Actor Tick. 
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm="ProgressEvent",BlueprintInternalUseOnly = "true"))
+	static UPICOUploadSpatialAnchor_AsyncAction* PXR_UploadSpatialAnchor_Async(AActor* BoundActor,const FPICOUploadProgress& ProgressEvent);
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOUploadSpatialAnchorActionSuccess OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOUploadSpatialAnchorActionFailure OnFailure;
+
+	UPROPERTY()
+	AActor* BoundActor;
+
+private:
+	int32 LastProgress;
+
+	FPICOUploadProgress ProgressEvent;
+
+	void HandleUploadSpatialAnchorComplete(const FPICOSpatialHandle& FutureHandle,const int32 Progress,EFutureState State);
+};
+
+
+/* UAsyncTask_DownloadSharedAnchor
+ *****************************************************************************/
+UCLASS()
+class PICOXRMR_API UPICODownloadSharedSpatialAnchor_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+
+	/// <summary>
+	/// Loads anchor entities from the device's local storage or cloud storage.
+	/// </summary>
+	/// <param name="LoadInfo">Specifying which anchor entities to load.
+	/// - Persist Location:
+	///   	- Persist Location Local: device's local storage
+	/// 	- Persist Location Shared: cloud storage
+	/// </param>
+	/// <returns>
+	/// - Result: Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// - AnchorComponent: Associated with an Actor. Each component updates the anchor entity's pose to the Actor during each Actor Tick. 
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (AutoCreateRefTerm="ProgressEvent",BlueprintInternalUseOnly = "true"))
+	static UPICODownloadSharedSpatialAnchor_AsyncAction* PXR_DownloadSharedSpatialAnchor(const FPICOSpatialUUID& UUID,const FPICODownloadProgress& ProgressEvent);
+
+	UPROPERTY(BlueprintAssignable)
+	FPICODownloadSharedSpatialAnchorActionResult OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICODownloadSharedSpatialAnchorActionResult OnFailure;
+
+private:
+	FPICOSpatialUUID UUID;
+
+	FPICODownloadProgress ProgressEvent;
+
+	int32 LastProgress;
+	
+	void HandleDownloadSharedAnchorWithProgressComplete(const FPICOSpatialHandle& FutureHandle,const int32 Progress,EFutureState State);
+};
 /* UAsyncTask_LoadAnchorEntity
  *****************************************************************************/
 UCLASS()

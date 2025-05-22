@@ -6,6 +6,9 @@
 #include "UObject/ConstructorHelpers.h"
 #include "PXR_HMD.h"
 #include "PXR_Log.h"
+#include "Components/StaticMeshComponent.h"
+#include "TextureResource.h"
+#include "Engine/StaticMesh.h"
 
 AMRCSceneCapture2DPICO::AMRCSceneCapture2DPICO(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

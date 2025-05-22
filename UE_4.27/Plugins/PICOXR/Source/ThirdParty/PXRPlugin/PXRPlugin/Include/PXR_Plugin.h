@@ -230,6 +230,7 @@ PVRP_EXPORT PxrResult Pxr_StartSpatialSceneCapture(uint64_t* taskId);
  * future ext
  */
 PVRP_EXPORT int Pxr_PollFutureEXT(PxrFuturePollInfoEXT *pollInfo, PxrFuturePollResultEXT* pollResult);
+PVRP_EXPORT int Pxr_PollFutureWithProgress(PxrFuturePollInfoEXT *pollInfo, PxrFuturePollResultAndProgress* pollResult);
 /*
  * mr sdk 3.0
  */

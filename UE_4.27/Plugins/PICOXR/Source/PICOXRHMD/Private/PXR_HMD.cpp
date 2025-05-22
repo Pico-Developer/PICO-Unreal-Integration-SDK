@@ -1826,7 +1826,7 @@ bool FPICOXRHMD::InitializeSession()
 
 	{
 		//SetAppEngineInfo2
-		FString UnrealSDKVersion = "UE4_3.1.2";
+		FString UnrealSDKVersion = "UE4_3.2.3";
 		FString UnrealVersion = FString::FromInt(ENGINE_MINOR_VERSION);
 		UnrealSDKVersion = UnrealSDKVersion + UnrealVersion;
 		PXR_LOGI(PxrUnreal, "%s,xrVersion:%s", PLATFORM_CHAR(*FEngineVersion::Current().ToString()), PLATFORM_CHAR(*UnrealSDKVersion));

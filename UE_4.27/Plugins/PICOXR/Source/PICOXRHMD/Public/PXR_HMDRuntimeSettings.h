@@ -138,9 +138,6 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = Feature, Meta = (DisplayName = "Enable Body Tracking", ToolTip = "Enable Tracking Function related to Fitness Band"))
 		bool bEnableBodyTracking;
 
-	UPROPERTY(Config, EditAnywhere, Category = Feature, Meta = (DisplayName = "Use PICO Advance Interface"))
-		bool bUseAdvanceInterface;
-
 	UPROPERTY(Config, EditAnywhere, Category = Feature, Meta = (DisplayName = "Use Content Protect"))
 		bool bUseContentProtect;
 

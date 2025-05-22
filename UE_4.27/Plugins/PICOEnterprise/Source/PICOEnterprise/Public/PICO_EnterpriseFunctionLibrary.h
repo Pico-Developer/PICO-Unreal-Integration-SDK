@@ -1206,8 +1206,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static FString PE_GetDeviceSN();
 
-	/// <summary>Sets a volume for the device.</summary>
-	/// <param name="Volume">(In) Int, target volume, value range: [1, 15]</param>
+	/// <summary>
+	/// Freezes the screen to the front. The screen will turn around with the HMD.
+	/// Supported by G2 4K and Neo2 devices.
+	/// </summary>
+	/// <param name="freeze"> Whether to freeze the screen:
+	/// * `true`: freeze
+	/// * `false`: stop freezing               
+	/// </param>
 	/// <returns>None</returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static void PE_FreezeScreen(bool freeze);

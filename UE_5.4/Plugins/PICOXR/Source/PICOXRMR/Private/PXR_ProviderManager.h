@@ -9,6 +9,9 @@
 
 DECLARE_DELEGATE_OneParam(FPICOPollFutureDelegate, const FPICOSpatialHandle&);
 
+DECLARE_DELEGATE_ThreeParams(FPICOPollFutureWithProgressDelegate, const FPICOSpatialHandle&,const int32,EFutureState);
+
+
 DECLARE_MULTICAST_DELEGATE_FourParams(FPICOCreateAnchorEntityEventDelegate, uint64_t, EPICOResult, const FPICOSpatialHandle&, const FPICOSpatialUUID&);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FPICOPersistAnchorEntityEventDelegate, uint64_t, EPICOResult, EPICOPersistLocation);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FPICOUnpersistAnchorEntityEventDelegate, uint64_t, EPICOResult, EPICOPersistLocation);
@@ -62,7 +65,11 @@ protected:
 	FPICOSpatialHandle ProviderHandle;
 	TQueue<FFutureMessage> FutureQueueForProviders;
 	TMap<uint64_t, FPICOPollFutureDelegate> FutureToDelegateMap;
+	TMap<uint64_t, FPICOPollFutureWithProgressDelegate> FutureToDelegateWithProgressMap;
+
 	bool AddPollFutureRequirement(const FPICOSpatialHandle& FutureHandle, const FPICOPollFutureDelegate& Delegate);
+	bool AddPollFutureWithProgressRequirement(const FPICOSpatialHandle& FutureHandle, const FPICOPollFutureWithProgressDelegate& Delegate);
+
 	FRWLock DestroyLock;
 	EPICOProviderType Type=EPICOProviderType::Pico_Provider_Unknown;
 };
@@ -175,6 +182,8 @@ public:
 	bool ShareSpatialAnchorAsync(AActor* BoundActor,const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult);
 	bool LoadAnchorEntityAsync(const FPICOAnchorLoadInfo& LoadInfo, const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult);
 	bool DownloadSharedSpatialAnchorsAsync(const FPICOAnchorLoadInfo& LoadInfo,const FPICOPollFutureDelegate& Delegate,TSet<FPICOSpatialHandle>& HandleSet,EPICOResult& OutResult);
+	bool UploadSpatialAnchorAsync(AActor* BoundActor,const FPICOPollFutureWithProgressDelegate& Delegate,EPICOResult& Result);
+	bool DownloadSharedSpatialAnchorWithProgressAsync(const FPICOSpatialUUID& UUID,const FPICOPollFutureWithProgressDelegate& Delegate,EPICOResult& Result);
 	
 	bool CreateSpatialAnchorComplete(const FPICOSpatialHandle& FutureHandle, FPICOSpatialAnchorCreateCompletion& completion,EPICOResult& OutResult);
 	bool PersistSpatialAnchorComplete(const FPICOSpatialHandle& FutureHandle, FPICOSpatialAnchorPersistCompletion& completion,EPICOResult& OutResult);
@@ -186,6 +195,8 @@ public:
 
 	bool DestroyAnchorByHandle(const FPICOSpatialHandle& AnchorHandle,EPICOResult& OutResult);
 	bool GetAnchorEntityUUID(AActor* BoundActor, FPICOSpatialUUID& OutAnchorUUID,EPICOResult& OutResult);
+	bool GetAnchorEntityUUIDByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID,EPICOResult& OutResult);
+
 	bool GetAnchorPose(UPICOAnchorComponent* AnchorComponent, FTransform& OutAnchorPose,EPICOResult& OutResult);
 	bool UpdateAnchor(UPICOAnchorComponent* AnchorComponent,EPICOResult& OutResult);
 	
@@ -201,6 +212,8 @@ public:
 	bool GetAnchorComponentFlags(const FPICOSpatialHandle& AnchorHandle, TArray<EPICOAnchorComponentTypeFlag>& OutAnchorComponentFlags);
 	bool GetAnchorSceneLabelLegacy(const FPICOSpatialHandle& AnchorHandle,EPICOSemanticLabel& OutSemanticLabel);
 	bool GetAnchorEntityUUIDLegacy(AActor* BoundActor, FPICOSpatialUUID& OutAnchorUUID);
+	bool GetAnchorEntityUUIDLegacyByComponent(const UPICOAnchorComponent* AnchorComponent, FPICOSpatialUUID& OutAnchorUUID);
+
 	bool GetAnchorPoseLegacy(UPICOAnchorComponent* AnchorComponent, FTransform& OutAnchorPose);
 	bool DestroyAnchorByHandleLegacy(const FPICOSpatialHandle& AnchorHandle);
 
@@ -212,7 +225,7 @@ public:
 	
 private:
 	bool IsAnchorValid(AActor* BoundActor);
-	bool IsAnchorValid(UPICOAnchorComponent* AnchorComponent);
+	bool IsAnchorValid(const UPICOAnchorComponent* AnchorComponent);
 	
 	UPICOAnchorComponent* GetAnchorComponent(AActor* BoundActor);
 

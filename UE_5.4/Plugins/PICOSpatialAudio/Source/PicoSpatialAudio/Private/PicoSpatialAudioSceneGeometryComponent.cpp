@@ -384,8 +384,8 @@ void UPicoSpatialAudioSceneGeometryComponent::BatchStaticMeshes(const TArray<USt
 		VerticesCount += MeshLODResources.VertexBuffers.PositionVertexBuffer.GetNumVertices();
 		IndicesCount += MeshLODResources.IndexBuffer.GetNumIndices();
 	}
-	OutBatchedMeshVerticesBuffer.SetNum(VerticesCount * 3, true);
-	OutBatchedMeshIndicesBuffer.SetNum(IndicesCount, true);
+	OutBatchedMeshVerticesBuffer.SetNum(VerticesCount * 3);
+	OutBatchedMeshIndicesBuffer.SetNum(IndicesCount);
 
 	float* OutVertex = OutBatchedMeshVerticesBuffer.GetData();
 	TArray<uint32> TempIndicesBuffer;

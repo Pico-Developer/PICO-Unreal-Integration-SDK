@@ -748,6 +748,162 @@ void UPICOUnpersistSpatialAnchor_AsyncAction::HandleUnpersistAnchorEntityComplet
 	SetReadyToDestroy();
 }
 
+void UPICOUploadSpatialAnchor_AsyncAction::Activate()
+{
+	if (!IsValid(BoundActor))
+	{
+		OnFailure.Broadcast(EPICOResult::PXR_Error_ValidationFailure);
+		return;
+	}
+	EPICOResult Result = EPICOResult::PXR_Error_Unknow;
+
+	bool bStarted = false;
+	
+	bStarted = PXR_AnchorProvider::GetInstance()->UploadSpatialAnchorAsync
+	(
+		BoundActor,
+		FPICOPollFutureWithProgressDelegate::CreateUObject(this, &UPICOUploadSpatialAnchor_AsyncAction::HandleUploadSpatialAnchorComplete),
+		Result
+	);
+
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+UPICOUploadSpatialAnchor_AsyncAction* UPICOUploadSpatialAnchor_AsyncAction::PXR_UploadSpatialAnchor_Async(AActor* InBoundActor,const FPICOUploadProgress& InProgressEvent)
+{
+	UPICOUploadSpatialAnchor_AsyncAction* Action = NewObject<UPICOUploadSpatialAnchor_AsyncAction>();
+	Action->BoundActor = InBoundActor;
+	Action->ProgressEvent=InProgressEvent;
+	if (IsValid(InBoundActor))
+	{
+		Action->RegisterWithGameInstance(InBoundActor->GetWorld());
+	}
+	else
+	{
+		Action->RegisterWithGameInstance(GWorld);
+	}
+
+	return Action;
+}
+
+void UPICOUploadSpatialAnchor_AsyncAction::HandleUploadSpatialAnchorComplete(const FPICOSpatialHandle& FutureHandle,const int32 Progress,EFutureState State)
+{
+	if (Progress)
+	{
+		if (Progress!=LastProgress)
+		{
+			ProgressEvent.ExecuteIfBound(Progress);
+		}
+		LastProgress=Progress;
+	}
+	
+	if (State==EFutureState::Future_State_Ready_EXT)
+	{
+		FPICOSpatialAnchorShareCompletion SpatialAnchorShareCompletion;
+		EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+
+		if (PXR_AnchorProvider::GetInstance()->ShareSpatialAnchorComplete(FutureHandle, SpatialAnchorShareCompletion,OutResult))
+		{
+			UPICOAnchorComponent* AnchorComponent = Cast<UPICOAnchorComponent>(BoundActor->GetComponentByClass(UPICOAnchorComponent::StaticClass()));
+			if (IsValid(AnchorComponent) && AnchorComponent->IsAnchorValid())
+			{
+				if (PXR_SUCCESS(SpatialAnchorShareCompletion.FutureResult))
+				{
+					OnSuccess.Broadcast(SpatialAnchorShareCompletion.FutureResult,AnchorComponent);
+				}
+				else
+				{
+					OnFailure.Broadcast(SpatialAnchorShareCompletion.FutureResult);
+				}
+			}
+			else
+			{
+				OnFailure.Broadcast(EPICOResult::PXR_Error_ValidationFailure);
+			}
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+	
+		SetReadyToDestroy();
+	}
+}
+
+void UPICODownloadSharedSpatialAnchor_AsyncAction::Activate()
+{
+	bool bStarted = false;
+	EPICOResult Result = EPICOResult::PXR_Error_Unknow;
+	bStarted = PXR_AnchorProvider::GetInstance()->DownloadSharedSpatialAnchorWithProgressAsync
+					(
+						UUID,
+						FPICOPollFutureWithProgressDelegate::CreateUObject(this,&UPICODownloadSharedSpatialAnchor_AsyncAction::HandleDownloadSharedAnchorWithProgressComplete),
+						Result
+					);
+	
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+		SetReadyToDestroy();
+	}
+}
+
+UPICODownloadSharedSpatialAnchor_AsyncAction* UPICODownloadSharedSpatialAnchor_AsyncAction::PXR_DownloadSharedSpatialAnchor(const FPICOSpatialUUID& InUUID, const FPICODownloadProgress& InProgressEvent)
+{
+	UPICODownloadSharedSpatialAnchor_AsyncAction* Action = NewObject<UPICODownloadSharedSpatialAnchor_AsyncAction>();
+	Action->UUID = InUUID;
+	Action->ProgressEvent = InProgressEvent;
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+
+void UPICODownloadSharedSpatialAnchor_AsyncAction::HandleDownloadSharedAnchorWithProgressComplete(const FPICOSpatialHandle& FutureHandle,const int32 Progress,EFutureState State)
+{
+	if (Progress)
+	{
+		if (Progress!=LastProgress)
+		{
+			ProgressEvent.ExecuteIfBound(Progress,UUID);
+		}
+		LastProgress=Progress;
+	}
+
+	if (State==EFutureState::Future_State_Ready_EXT)
+	{
+		FPICOSharedSpatialAnchorDownloadCompletion SharedSpatialAnchorDownloadCompletion;
+
+		PXR_LOGV(PxrMR, "HandleDownloadSharedAnchorsComplete FutureHandle:%llu",FutureHandle.Value);
+		EPICOResult OutResult =EPICOResult::PXR_Error_Unknow;
+	
+		if (PXR_AnchorProvider::GetInstance()->DownloadSharedSpatialAnchorsComplete(FutureHandle, SharedSpatialAnchorDownloadCompletion,OutResult))
+		{
+			if (PXR_SUCCESS(SharedSpatialAnchorDownloadCompletion.FutureResult))
+			{
+				OnSuccess.Broadcast(SharedSpatialAnchorDownloadCompletion.FutureResult);
+			}
+			else
+			{
+				OnFailure.Broadcast(SharedSpatialAnchorDownloadCompletion.FutureResult);
+			}
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+	}
+	
+
+	SetReadyToDestroy();
+	
+}
+
 //////////////////////////////////////////////////////////////////////////
 /// Load Anchor Entity
 //////////////////////////////////////////////////////////////////////////

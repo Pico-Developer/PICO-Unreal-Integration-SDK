@@ -266,6 +266,7 @@ struct PICOPluginWrapper
 	 * future ext
 	*/
 	PICO_DECLARE_ENTRY_POINT(PollFutureEXT);
+	PICO_DECLARE_ENTRY_POINT(PollFutureWithProgress);
 	/*
 	 * mr sdk 3.0
 	 */

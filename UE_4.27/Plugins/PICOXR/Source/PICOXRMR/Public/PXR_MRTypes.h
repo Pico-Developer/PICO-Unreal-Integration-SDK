@@ -17,6 +17,7 @@ DEFINE_LOG_CATEGORY_STATIC(PxrMR, Log, All);
 
 #define PXR_SUCCESS(Result) (uint8(Result) == 0)
 #define PXR_FAILURE(Result) (uint8(Result) != 0)
+#define PXR_DOWNLOAD_SUCCESS 100
 
 UENUM(BlueprintType)
 enum class EPICOResult : uint8
@@ -86,6 +87,15 @@ enum class EPICOAnchorComponentTypeFlag : uint8
 	ComponentFlag_Plane = 4,
 	ComponentFlag_Volume = 5
 };
+
+
+UENUM(BlueprintType)
+enum class EPICOAnchorState : uint8
+{
+	Invalid  = 0,
+	Saved = 1,
+};
+
 
 UENUM(BlueprintType)
 enum class EPICOSpatialSceneDataTypeFlags : uint8
@@ -174,6 +184,7 @@ struct PICOXRMR_API FFutureMessage
 
 	FPICOSpatialHandle MessageHandle;
 	bool IsFrameBarrier;
+	bool HasProgress;
 
 	uint64 Uuid;
 	
@@ -182,8 +193,18 @@ struct PICOXRMR_API FFutureMessage
 		Uuid=0;
 		MessageHandle=0;
 		IsFrameBarrier=false;
+		HasProgress=false;
 	}
 };
+
+UENUM()
+enum class EFutureState : uint8
+{
+	Future_State_Pending_EXT = 1,
+	Future_State_Ready_EXT = 2,
+	Count 
+};
+
 
 FORCEINLINE uint32 GetTypeHash(const FPICOSpatialHandle& Anchor)
 {
@@ -348,6 +369,7 @@ enum class EPICOSemanticLabel:uint8
 	Bed =15,
 	Screen =17,
 	VirtualWall = 18,
+	Stairway =24,
 	Count UMETA(Hidden)
 };
 ENUM_RANGE_BY_VALUES(EPICOSemanticLabel, 
@@ -365,8 +387,36 @@ ENUM_RANGE_BY_VALUES(EPICOSemanticLabel,
 	EPICOSemanticLabel::Curtain,
 	EPICOSemanticLabel::Cabinet,
 	EPICOSemanticLabel::Bed,
-	EPICOSemanticLabel::Screen);
+	EPICOSemanticLabel::Screen,
+	EPICOSemanticLabel::Stairway);
 
+
+UENUM(BlueprintType)
+enum class ESceneCaptureScalingMode : uint8
+{
+	// Use Default Scale of Actor.
+	NoScaling,
+	// Stretch each axis by the SceneInfo.
+	Stretch,
+};
+
+USTRUCT(BlueprintType)
+struct PICOXRMR_API FSceneCaptureGeneratorActor
+{
+	GENERATED_BODY()
+
+	/**
+	 * The class of actor to spawn.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|MR")
+	TSubclassOf<AActor> Actor;
+	
+	/**
+	 * Set what scaling mode to apply to the actor.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|MR")
+	ESceneCaptureScalingMode ScalingMode = ESceneCaptureScalingMode::Stretch;
+};
 
 USTRUCT(BlueprintType)
 struct PICOXRMR_API FPICOAnchorLoadInfo
@@ -754,4 +804,108 @@ struct FPICOMRSceneInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXRMR")
 	EPICOSceneType SceneType;
 	
+};
+
+
+
+USTRUCT(BlueprintType)
+struct FPICOUVAdjustment
+{
+	GENERATED_BODY()
+
+	/** Offset applied to the UV texture coordinates.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXRMR")
+	FVector2D Offset = FVector2D::ZeroVector;
+
+	/** Scale applied to the UV texture coordinates.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXRMR")
+	FVector2D Scale = FVector2D::UnitVector;
+	
+	/** Angle of rotation in degrees.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXRMR")
+	float Rotation; 
+
+};
+
+
+
+USTRUCT(BlueprintType)
+struct FPICOMRBox2DInfo_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FVector2D Offset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FVector2D Extent;
+};
+
+USTRUCT(BlueprintType)
+struct FPICOMRBox3DInfo_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FVector Offset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FVector Extent;
+};
+
+USTRUCT(BlueprintType)
+struct FPICOMRPolygonVertices_Offline
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	TArray<FVector2D> PolygonVertices;
+};
+
+USTRUCT(BlueprintType)
+struct FPICOMRSceneInfo_Offline
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FString Guid;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FVector Position;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FQuat Rotation;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	EPICOSemanticLabel SemanticLabel;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FPICOMRBox3DInfo_Offline Box3DInfo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	FPICOMRBox2DInfo_Offline Box2DInfo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	TArray<FVector2D> PolygonVertices;
+
+
+	void Reset()
+	{
+		Position = FVector();
+		Rotation = FQuat();
+	}
+
+	bool IsValid() const
+	{
+		return true;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FPICOMRSceneInfos_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR|PXRMR")
+	TArray<FPICOMRSceneInfo_Offline> OutSceneInfos;
 };

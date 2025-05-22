@@ -3057,6 +3057,12 @@ typedef struct PxrFuturePollResultEXT {
     PxrFutureStateEXT          state;
 } PxrFuturePollResultEXT;
 
+typedef struct PxrFuturePollResultAndProgress {
+    PxrStructureType           type; //PXR_TYPE_FUTURE_POLL_RESULT_EXT
+    PxrFutureStateEXT          state;
+    int32_t                    progress;
+} PxrFuturePollResultAndProgress;
+
 typedef enum PxrSenseDataProviderState {
     PXR_SENSE_DATA_PROVIDER_STATE_INITIALIZED = 0,
     PXR_SENSE_DATA_PROVIDER_STATE_RUNNING = 1,
@@ -3090,6 +3096,12 @@ typedef enum PxrSemanticLabel{
     PXR_SEMANTIC_LABEL_PLANT = 16,
     PXR_SEMANTIC_LABEL_SCREEN = 17,
     PXR_SEMANTIC_LABEL_VIRTUAL_WALL = 18,
+    PXR_SEMANTIC_LABEL_REFRIGERATOR = 19,
+    PXR_SEMANTIC_LABEL_WASHING_MACHINE = 20,
+    PXR_SEMANTIC_LABEL_AIR_CONDITIONER = 21,
+    PXR_SEMANTIC_LABEL_LAMP = 22,
+    PXR_SEMANTIC_LABEL_WALL_ART = 23,
+    PXR_SEMANTIC_LABEL_STAIRWAY_PICO = 24,
 } PxrSemanticLabel;
 
 // Semantic filter

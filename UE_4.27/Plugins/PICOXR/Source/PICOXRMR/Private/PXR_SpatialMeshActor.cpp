@@ -17,7 +17,7 @@
 #define UPDATE_FRAME_NUM_MAX 10
 
 
-APXRSpatialMeshActor::APXRSpatialMeshActor(const FObjectInitializer& ObjectInitializer)
+APICOXRSpatialMeshActor::APICOXRSpatialMeshActor(const FObjectInitializer& ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
@@ -27,13 +27,21 @@ APXRSpatialMeshActor::APXRSpatialMeshActor(const FObjectInitializer& ObjectIniti
 		static ConstructorHelpers::FObjectFinder<UMaterial> DefaultMaterialFinder(TEXT("Material'/PICOXR/Materials/Mat_WireframeMaterial.Mat_WireframeMaterial'"));
 		SpatialMeshMaterial= DefaultMaterialFinder.Object;
 	}
+
+	if (SpatialMeshMaterialHidden==nullptr)
+	{
+		static ConstructorHelpers::FObjectFinder<UMaterial> DefaultMaterialFinder2(TEXT("Material'/PICOXR/Materials/Mat_WireframeHidden.Mat_WireframeHidden'"));
+		SpatialMeshMaterialHidden= DefaultMaterialFinder2.Object;
+	}
+
+	
 	for (EPICOSemanticLabel Val : TEnumRange<EPICOSemanticLabel>())
 	{
 		SemanticToColors.Emplace(Val, FColor::MakeRandomColor());
 	}
 }
 
-void APXRSpatialMeshActor::BeginPlay()
+void APICOXRSpatialMeshActor::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -42,23 +50,23 @@ void APXRSpatialMeshActor::BeginPlay()
 	RootSceneComponent->RegisterComponent();
 	SetRootComponent(RootSceneComponent);
 	SpatialMeshInstance = UMaterialInstanceDynamic::Create(SpatialMeshMaterial, nullptr);
-
+	SpatialMeshHiddenInstance = UMaterialInstanceDynamic::Create(SpatialMeshMaterialHidden, nullptr);
 	if (bDrawOnBeginPlay)
 	{
 		StartDraw();
 	}
 }
 
-void APXRSpatialMeshActor::HandleMeshDataUpdatedEvent()
+void APICOXRSpatialMeshActor::HandleMeshDataUpdatedEvent()
 {
 	PXR_LOGV(PxrMR, "Received MeshDataUpdatedEvent");
 
 	UPICORequestSpatialMesh_AsyncAction* RequestSpatialMeshAction = UPICORequestSpatialMesh_AsyncAction::PXR_RequestSpatialMeshInfos_Async();
-	RequestSpatialMeshAction->OnSuccess.AddDynamic(this, &APXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent);
+	RequestSpatialMeshAction->OnSuccess.AddDynamic(this, &APICOXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent);
 	RequestSpatialMeshAction->Activate();
 }
 
-void APXRSpatialMeshActor::Tick(float DeltaTime)
+void APICOXRSpatialMeshActor::Tick(float DeltaTime)
 {
 	PXR_LOGV(PxrMR, "EntityToMeshMap Num:%d", EntityToMeshMap.Num());
 	TArray<FPICOSpatialMeshInfo> MRMeshInfos;
@@ -137,7 +145,7 @@ void APXRSpatialMeshActor::Tick(float DeltaTime)
 	}
 }
 
-void APXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent(EPICOResult Result, const TArray<FPICOSpatialMeshInfo>& MeshInfos)
+void APICOXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent(EPICOResult Result, const TArray<FPICOSpatialMeshInfo>& MeshInfos)
 {
 	PXR_LOGV(PxrMR, "Received RequestSpatialMeshContentsEvent MeshInfos:%d", MeshInfos.Num());
 	TArray<FPICOSpatialMeshInfo> MRMeshInfos = {};
@@ -173,12 +181,12 @@ void APXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent(EPICOResult Res
 	}
 }
 
-void APXRSpatialMeshActor::EndPlay(EEndPlayReason::Type Reason)
+void APICOXRSpatialMeshActor::EndPlay(EEndPlayReason::Type Reason)
 {
 	ClearMesh();
 }
 
-void APXRSpatialMeshActor::SetSemanticToColors(const TMap<EPICOSemanticLabel, FLinearColor>& In_SemanticToColors)
+void APICOXRSpatialMeshActor::SetSemanticToColors(const TMap<EPICOSemanticLabel, FLinearColor>& In_SemanticToColors)
 {
 	for (EPICOSemanticLabel Val : TEnumRange<EPICOSemanticLabel>())
 	{
@@ -189,43 +197,43 @@ void APXRSpatialMeshActor::SetSemanticToColors(const TMap<EPICOSemanticLabel, FL
 	}
 }
 
-bool APXRSpatialMeshActor::StartDraw()
+bool APICOXRSpatialMeshActor::StartDraw()
 {
 	SetActorTickEnabled(true);
-	if (!UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.Contains(this, GET_FUNCTION_NAME_CHECKED(APXRSpatialMeshActor, HandleMeshDataUpdatedEvent)))
+	if (!UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.Contains(this, GET_FUNCTION_NAME_CHECKED(APICOXRSpatialMeshActor, HandleMeshDataUpdatedEvent)))
 	{
-		UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.AddDynamic(this, &APXRSpatialMeshActor::HandleMeshDataUpdatedEvent);
+		UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.AddDynamic(this, &APICOXRSpatialMeshActor::HandleMeshDataUpdatedEvent);
 		return true;
 	}
 	
 	return false;
 }
 
-bool APXRSpatialMeshActor::PauseDraw()
+bool APICOXRSpatialMeshActor::PauseDraw()
 {
 	SetActorTickEnabled(false);
-	if (UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.Contains(this, GET_FUNCTION_NAME_CHECKED(APXRSpatialMeshActor, HandleMeshDataUpdatedEvent)))
+	if (UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.Contains(this, GET_FUNCTION_NAME_CHECKED(APICOXRSpatialMeshActor, HandleMeshDataUpdatedEvent)))
 	{
-		UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.RemoveDynamic(this, &APXRSpatialMeshActor::HandleMeshDataUpdatedEvent);
+		UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->MeshDataUpdatedDelegate.RemoveDynamic(this, &APICOXRSpatialMeshActor::HandleMeshDataUpdatedEvent);
 		return true;
 	}
 
 	return false;
 }
 
-void APXRSpatialMeshActor::SetMeshVisibility(bool visibility)
+void APICOXRSpatialMeshActor::SetMeshVisibility(bool visibility)
 {
 	bSpatialMeshVisible = visibility;
 	for (const auto Pair : EntityToMeshMap)
 	{
 		if (Pair.Value)
 		{
-			Pair.Value->SetVisibility(visibility);
+			Pair.Value->SetMaterial(0,visibility ? SpatialMeshInstance:SpatialMeshHiddenInstance);
 		}
 	}
 }
 
-bool APXRSpatialMeshActor::ClearMesh()
+bool APICOXRSpatialMeshActor::ClearMesh()
 {
 	for (const auto Pair : EntityToMeshMap)
 	{
@@ -243,12 +251,12 @@ bool APXRSpatialMeshActor::ClearMesh()
 	return true;
 }
 
-FColor APXRSpatialMeshActor::GetColorBySceneLabel(EPICOSemanticLabel SceneLabel)
+FColor APICOXRSpatialMeshActor::GetColorBySceneLabel(EPICOSemanticLabel SceneLabel)
 {
 	return SemanticToColors.Contains(SceneLabel)?SemanticToColors[SceneLabel]:FColor::MakeRandomColor();
 }
 
-bool APXRSpatialMeshActor::UpdateMeshByMeshInfo(UPICOSpatialMeshComponent* SpatialMesh, const FPICOSpatialMeshInfo& MeshInfo)
+bool APICOXRSpatialMeshActor::UpdateMeshByMeshInfo(UPICOSpatialMeshComponent* SpatialMesh, const FPICOSpatialMeshInfo& MeshInfo)
 {
 	if (SpatialMesh)
 	{

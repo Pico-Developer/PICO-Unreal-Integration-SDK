@@ -5,6 +5,9 @@
 #include "SoundFieldRendering.h"
 #include "PxrAudioSpatializerContextSingleton.h"
 #include "PicoAmbisonicsSettings.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+#include "DSP/FloatArrayMath.h"
+#endif
 
 namespace Pxr_Audio
 {

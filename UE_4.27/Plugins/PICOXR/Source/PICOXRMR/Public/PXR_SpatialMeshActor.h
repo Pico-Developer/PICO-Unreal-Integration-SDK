@@ -11,45 +11,48 @@
 #include "PXR_SpatialMeshActor.generated.h"
 
 UCLASS(BlueprintType,DisplayName="PICO XR SpatialMesh Actor")
-class APXRSpatialMeshActor : public AActor
+class APICOXRSpatialMeshActor : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	APXRSpatialMeshActor(const FObjectInitializer& ObjectInitializer);
+	APICOXRSpatialMeshActor(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void BeginPlay() override;
 	virtual void EndPlay(EEndPlayReason::Type Reason) override;
 	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR MR Spatial Mesh",meta=(ExposeOnSpawn = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO XR Toolkit",meta=(ExposeOnSpawn = true))
 	bool bDrawOnBeginPlay = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR MR Spatial Mesh",meta=(ExposeOnSpawn = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO XR Toolkit",meta=(ExposeOnSpawn = true))
 	UMaterial* SpatialMeshMaterial;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR MR Spatial Mesh",meta=(ExposeOnSpawn = true))
+	UPROPERTY()
+	UMaterial* SpatialMeshMaterialHidden;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO XR Toolkit",meta=(ExposeOnSpawn = true))
 	TEnumAsByte<ECollisionEnabled::Type> CollisionType=ECollisionEnabled::Type::QueryAndPhysics;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR MR Spatial Mesh",meta=(ExposeOnSpawn = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO XR Toolkit",meta=(ExposeOnSpawn = true))
 	bool bSpatialMeshVisible=true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PXR MR Spatial Mesh")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO XR Toolkit")
 	TMap<EPICOSemanticLabel,FColor> SemanticToColors;
 
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	void SetSemanticToColors(const TMap<EPICOSemanticLabel,FLinearColor>& In_SemanticToColors);
 	
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	bool StartDraw();
 
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	bool PauseDraw();
 
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	void SetMeshVisibility(bool visibility);
 	
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	bool ClearMesh();
 
 private:
@@ -68,4 +71,7 @@ protected:
 	int32 DrawnPrimitives=0;
 	UPROPERTY()
 	UMaterialInstanceDynamic* SpatialMeshInstance=nullptr;
+	UPROPERTY()
+	UMaterialInstanceDynamic* SpatialMeshHiddenInstance=nullptr;
+
 };

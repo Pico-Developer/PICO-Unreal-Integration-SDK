@@ -239,9 +239,9 @@ bool PICOXRMotionTracking::GetBodyTrackingSupported(bool& Supported)
 	bool bResult = false;
 	bool supported = false;
 	int modesCount = 0;
-	Supported = supported;
 	PxrBodyTrackingMode modes = PxrBodyTrackingMode::PXR_BTM_DISABLE;
 	bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().GetBodyTrackingSupported(&supported, &modesCount, &modes));
+	Supported = supported;
 
 	return bResult;
 }

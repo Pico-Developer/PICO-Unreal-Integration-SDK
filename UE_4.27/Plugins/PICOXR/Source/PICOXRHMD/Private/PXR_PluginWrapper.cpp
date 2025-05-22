@@ -274,6 +274,7 @@ bool InitializePICOPluginWrapper(PICOPluginWrapper* wrapper)
 		 * future ext
 		 */
 		PICO_BIND_ENTRY_POINT(PollFutureEXT),
+		PICO_BIND_ENTRY_POINT(PollFutureWithProgress),
 		/*
 		 * mr sdk 3.0
 		 */
