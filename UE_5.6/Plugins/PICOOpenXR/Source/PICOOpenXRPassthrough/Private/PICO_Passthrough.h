@@ -10,7 +10,7 @@ class FPICOOpenXRPassthrough : public IOpenXRExtensionPlugin
 {
 public:
 	FPICOOpenXRPassthrough();
-	virtual ~FPICOOpenXRPassthrough() {}
+	virtual ~FPICOOpenXRPassthrough() override {}
 
 	void Register();
 	void Unregister();
@@ -28,7 +28,6 @@ public:
 	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace) override;
 	virtual void OnBeginRendering_GameThread(XrSession InSession, FSceneViewFamily& InViewFamily, TArrayView<const uint32> VisibleLayers) override;
 	virtual void OnBeginRendering_RenderThread(XrSession InSession, FRDGBuilder& GraphBuilder) override;
-	virtual const void* OnEndProjectionLayer_RHIThread(XrSession InSession, int32 InLayerIndex, const void* InNext, XrCompositionLayerFlags& OutFlags) override;
 	virtual void OnDestroySession(XrSession InSession) override;
 
 	virtual void UpdateCompositionLayers_RHIThread(XrSession InSession, TArray<XrCompositionLayerBaseHeader*>& Headers) override;
@@ -87,8 +86,6 @@ private:
 	XrTime TheDisplayTime;
 
 	TAtomic<bool>						 bIsAR = false;
-	XrCompositionLayerAlphaBlendFB		 BlendState = { XR_TYPE_COMPOSITION_LAYER_ALPHA_BLEND_FB };
-	bool							     bSupportLayerDepth = false;
 
 	class IXRTrackingSystem* XRTrackingSystem = nullptr;
 

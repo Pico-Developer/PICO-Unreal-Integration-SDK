@@ -13,62 +13,20 @@ namespace Pxr_Audio
 		}
 
 		PxrAudioSpatializer_Result APINative::CreateContext(
-			PxrAudioSpatializer_RenderingMode Mode,
+			PxrAudioSpatializer_RenderingQuality Quality,
 			size_t FramesPerBuffer,
 			size_t SampleRate)
 		{
 			PicoSpatialAudioEventTracker::LogSdkApi("pico_spatial_audio_create_context|unreal_native");
-			return PxrAudioSpatializer_CreateContext(&Context, Mode, FramesPerBuffer, SampleRate);
+			return PxrAudioSpatializer_CreateContextByMode(
+				&Context, PASP_LowComplexity, Quality, FramesPerBuffer, SampleRate);
 		}
 
 		PxrAudioSpatializer_Result APINative::InitializeContext()
 		{
 			return PxrAudioSpatializer_InitializeContext(Context);
 		}
-
-		PxrAudioSpatializer_Result APINative::SubmitMesh(
-			const float* Vertices,
-			int VerticesCount,
-			const int* Indices,
-			int IndicesCount,
-			PxrAudioSpatializer_AcousticsMaterial
-			Material,
-			int* GeometryId)
-		{
-			PxrAudioSpatializer_Result Result = PASP_SUCCESS;
-			if (ContextDestructionMutex.try_lock_shared())
-			{
-				Result = PxrAudioSpatializer_SubmitMesh(Context, Vertices, VerticesCount, Indices, IndicesCount,
-				                                        Material,
-				                                        GeometryId);
-				ContextDestructionMutex.unlock_shared();
-			}
-			return Result;
-		}
-
-		PxrAudioSpatializer_Result APINative::SubmitMeshAndMaterialFactor(
-			const float* Vertices,
-			int VerticesCount,
-			const int* Indices,
-			int IndicesCount,
-			const float* AbsorptionFactor,
-			float ScatteringFactor,
-			float TransmissionFactor,
-			int* GeometryId)
-		{
-			PxrAudioSpatializer_Result Result = PASP_SUCCESS;
-			if (ContextDestructionMutex.try_lock_shared())
-			{
-				Result = PxrAudioSpatializer_SubmitMeshAndMaterialFactor(
-					Context, Vertices, VerticesCount, Indices, IndicesCount,
-					AbsorptionFactor, ScatteringFactor,
-					TransmissionFactor,
-					GeometryId);
-				ContextDestructionMutex.unlock_shared();
-			}
-			return Result;
-		}
-
+		
 		PxrAudioSpatializer_Result APINative::SubmitMeshWithConfig(const float* Vertices, int VerticesCount,
 		                                                           const int* Indices, int IndicesCount,
 		                                                           const PxrAudioSpatializer_AcousticMeshConfig* Config,
@@ -80,6 +38,20 @@ namespace Pxr_Audio
 				Result = PxrAudioSpatializer_SubmitMeshWithConfig(Context, Vertices, VerticesCount, Indices,
 				                                                  IndicesCount, Config, GeometryId);
 				PicoSpatialAudioEventTracker::LogSdkApi("pico_spatial_audio_submit_mesh_with_config|unreal_native");
+				ContextDestructionMutex.unlock_shared();
+			}
+			return Result;
+		}
+
+		PxrAudioSpatializer_Result APINative::UpdateMesh(int GeometryId, const float* Vertices, int VerticesCount,
+			const int* Indices, int IndicesCount, const PxrAudioSpatializer_AcousticMeshConfig* Config,
+			int* NewGeometryId)
+		{
+			PxrAudioSpatializer_Result Result = PASP_SUCCESS;
+			if (ContextDestructionMutex.try_lock_shared())
+			{
+				Result = PxrAudioSpatializer_UpdateMesh(Context, GeometryId, Vertices, VerticesCount, Indices,
+				                                        IndicesCount, Config, NewGeometryId);
 				ContextDestructionMutex.unlock_shared();
 			}
 			return Result;

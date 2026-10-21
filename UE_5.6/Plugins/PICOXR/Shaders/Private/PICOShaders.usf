@@ -83,3 +83,40 @@ void MainForCubemap(
 		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(u,v,-1.));
 	}
 }
+
+void MainForLightCubemap(
+	FScreenVertexOutput Input,
+	out float4 OutColor : SV_Target0
+	)
+{
+	float u = Input.UV.x * 2. - 1.0;
+	float v = Input.UV.y * 2. - 1.0;
+
+	if(CubeFaceIndex == 0)//left
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(1., v, u));
+	}
+	else if(CubeFaceIndex == 1)//right
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(-1., -v, u));
+	}
+	else if(CubeFaceIndex == 2) //top
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(-v, 1., u));
+	}
+	else if(CubeFaceIndex == 3) //bottom
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(-v, -1., -u));
+	}
+	else if(CubeFaceIndex == 5)//back
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(v, u, 1.));
+	}
+	else if(CubeFaceIndex == 4) //front
+	{
+		OutColor = TextureCubeSample(InTextureCube, InTextureSampler, float3(v, -u, -1.));
+	}
+}
+
+
+

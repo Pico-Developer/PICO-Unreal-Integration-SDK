@@ -292,7 +292,11 @@ bool InitializePICOPluginWrapper(PICOPluginWrapper* wrapper)
 		PICO_BIND_ENTRY_POINT(PersistSpatialAnchorComplete),
 		PICO_BIND_ENTRY_POINT(UnpersistSpatialAnchorAsync),
 		PICO_BIND_ENTRY_POINT(UnpersistSpatialAnchorComplete),
-	
+		/*
+		* mr sdk 3.0 light estimation
+		*/
+		PICO_BIND_ENTRY_POINT(ReleaseEnvironmentTextureImage),
+
 		/**
 		*  mr sdk 3.0 scene capture
 		*/

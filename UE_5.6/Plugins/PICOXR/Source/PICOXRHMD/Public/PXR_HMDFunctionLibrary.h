@@ -265,16 +265,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PXR|PXRHMD")
 	static FVector PXR_GetCurrentPosition();
 
-	/// <summary>Checks if the HMD supports positional tracking.</summary>
-	/// <returns>Bool:
-    /// <ul>
-    /// <li>`true`: support positional tracking (6DOF mode enabled)</li>
-    /// <li>`false`: not support positional tracking (3DOF mode enabled)</li>
-    /// </ul>
-    /// </returns>
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRHMD")
-	static bool PXR_DoesSupportPositionalTracking();
-
 	/// @brief Gets the angular velocity of the headset.
 	/// @return A FVector representing the angular velocity of the headset.
 	UFUNCTION(BlueprintCallable, Category = "PXR|PXRHMD")

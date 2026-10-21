@@ -12,6 +12,7 @@
 #include "PXR_MotionTrackingUtility.h"
 #include "PXR_Utils.h"
 #include "PXR_Log.h"
+#include "Async/Async.h"
 
 
 #define LOCTEXT_NAMESPACE "PICOXRMotionTracking"

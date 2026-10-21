@@ -7,6 +7,7 @@
 #include "PXR_PortalModule.h"
 #include "Interfaces/IPluginManager.h"
 #include "Interfaces/IProjectManager.h"
+#include "Misc/MessageDialog.h"
 
 
 #define PICOXR_SYNC_SETTINGS(SettingsClass1, SettingsClass2,PropertyName) \

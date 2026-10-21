@@ -228,4 +228,12 @@ public:
 	*/
 	UFUNCTION(BlueprintPure, Category = "PICO|HMD")
 	static bool SetProjectionLayerColorMatrix3x3fPICO(bool Enable, FVector3f ColumnA, FVector3f ColumnB, FVector3f ColumnC);
+
+	/**
+	* New EXT-based battery query API.
+	* Compared with the legacy controller battery API, this interface supports querying
+	* battery information for hands and HMD, and exposes more battery state details.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "PICO|HMD")
+	static bool GetBatteryStateDisplayPICO(EControllerHand Hand, bool& Valid, float& BatteryLevel, bool& Charging, bool& PluggedIn, bool& NoBattery);
 };

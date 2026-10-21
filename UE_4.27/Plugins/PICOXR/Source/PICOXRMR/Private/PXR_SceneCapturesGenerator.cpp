@@ -10,6 +10,9 @@
 #include "Engine/StaticMeshActor.h"
 #include "Serialization/JsonWriter.h"
 #include "Serialization/JsonSerializer.h"
+#if WITH_EDITOR
+#include "FileHelpers.h"
+#endif
 
 constexpr float WALL_WIDTH = 1.0f;
 // Sets default values
@@ -310,6 +313,7 @@ bool APICOXRSceneCapturesGenerator::LoadOfflineSceneData(FString ImportPath, FPI
 {
 	OutSceneInfos.OutSceneInfos.Reset();
 
+#if WITH_EDITOR
 	FPaths::NormalizeDirectoryName(ImportPath);
 	
 	FString JsonString;
@@ -341,6 +345,8 @@ bool APICOXRSceneCapturesGenerator::LoadOfflineSceneData(FString ImportPath, FPI
 		}
 		return true;
 	}
+#endif
+	
 
 	return false;
 }

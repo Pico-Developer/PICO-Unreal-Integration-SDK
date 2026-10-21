@@ -505,6 +505,8 @@ enum class EPICOProviderType:uint8
 	Pico_Provider_Anchor = 1,
 	Pico_Provider_Mesh = 2,
 	Pico_Provider_Scene_Capture = 3,
+	Pico_Provider_Plane = 4,
+	Pico_Provider_Light_Estimation = 5,
 	Pico_Provider_Max
 };
 
@@ -644,15 +646,37 @@ struct FPICOSenseDataProviderCreateInfoSceneCapture : FPICOSenseDataProviderCrea
 	}
 };
 
+struct FPICOSenseDataProviderCreateInfoPlane : FPICOSenseDataProviderCreateInfoBase
+{
+	FPICOSenseDataProviderCreateInfoPlane()
+	{
+		Type = EPICOProviderType::Pico_Provider_Plane;
+	}
+};
+
+struct FPICOSenseDataProviderCreateInfoLightEstimation : FPICOSenseDataProviderCreateInfoBase
+{
+	EPICOXRSpatialLightEstimationResolution Resolution;
+
+	FPICOSenseDataProviderCreateInfoLightEstimation()
+	{
+		Type = EPICOProviderType::Pico_Provider_Light_Estimation;
+		Resolution = EPICOXRSpatialLightEstimationResolution::TextureResolution_128x128;
+	}
+};
+
 UENUM(BlueprintType)
 enum class EPICOSpatialEntityComponentType:uint8
 {
-	Location = 0,
-	Semantic = 1,
-	Boundary_2D = 2,
-	Polygon = 3,
-	Boundary_3D = 4,
-	Triangle_Mesh = 5,
+	Unknown = 0,
+	Location,
+	Semantic,
+	Boundary_2D,
+	Polygon,
+	Boundary_3D,
+	Triangle_Mesh,
+	Plane_Orientation,
+	LightEstimation,
 };
 
 UENUM(BlueprintType)
@@ -752,6 +776,68 @@ struct FPICOBoundingBox2D
 		Extent = FPICOExtent2Df();
 	}
 };
+
+UENUM(BlueprintType)
+enum class EPICOPlaneOrientation:uint8
+{
+	HorizontalUpward = 0  UMETA(DisplayName="HorizontalUpward"), 
+	HorizontalDownward = 1 UMETA(DisplayName="HorizontalDownward"), 
+	Vertical = 2 UMETA(DisplayName="Vertical"), 
+	Arbitrary = 3 UMETA(DisplayName="Arbitrary"), 
+	Count UMETA(Hidden)
+};
+
+USTRUCT(BlueprintType)
+struct FPICOSpatialPlaneInfo
+{
+	GENERATED_BODY()
+
+	/** The UUID of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FPICOSpatialUUID UUID;
+
+	/** The State of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	EPICOSpatialMeshState State;
+
+	/** The State of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	EPICOPlaneOrientation PlaneOrientation;
+
+	/** The Transform of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FTransform PlanePose;
+
+	/** The BoundingBox of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FPICOBoundingBox2D BoundingBox2D;
+
+	/** The Vertices Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<FVector> Vertices;
+
+	/** The Indices Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<int32> Indices;
+	
+	/** The Semantics Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	EPICOSemanticLabel Semantic;
+
+	/** The Update Time of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	int64 UpdateTime;
+
+	FPICOSpatialPlaneInfo()
+	{
+		PlaneOrientation = EPICOPlaneOrientation::HorizontalUpward;
+		State = EPICOSpatialMeshState::Stable;
+		Semantic = EPICOSemanticLabel::Unknown;
+		UpdateTime = 0;
+	}
+};
+
+
 
 USTRUCT(BlueprintType)
 struct FPICOSpatialMeshInfo

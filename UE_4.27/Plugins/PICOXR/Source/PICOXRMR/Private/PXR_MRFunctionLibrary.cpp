@@ -255,6 +255,10 @@ bool UPICOXRMRFunctionLibrary::PXR_CloseSceneCaptureService()
 	return FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType::Pico_Provider_Scene_Capture);
 }
 
+bool UPICOXRMRFunctionLibrary::PXR_CloseSpatialPlaneScanning()
+{
+	return FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType::Pico_Provider_Plane);
+}
 
 bool UPICOXRMRFunctionLibrary::PXR_DestroyAnchorByComponent(UPICOAnchorComponent* AnchorComponent,EPICOResult& OutResult)
 {

@@ -1,54 +1,52 @@
-// Copyright 2023 PICO Inc. All Rights Reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "IOpenXRExtensionPlugin.h"
+#include "PICO_MRTextures.h"
 #include "PICO_MRTypes.h"
+#include "openxr/pico_light_estimation.h"
+
+// Forward declaration
+class FPICOOpenXRMRModule;
 DECLARE_DELEGATE_OneParam(FPICOPollFutureDelegate, const XrFutureEXT&);
 
-class FSpatialSensingExtensionPICO : public IOpenXRExtensionPlugin
+class FSpatialSensingExtensionPICO
 {
 public:
 	FSpatialSensingExtensionPICO();
 	virtual ~FSpatialSensingExtensionPICO() {}
 
-	void Register();
-	void Unregister();
-
-	static FSpatialSensingExtensionPICO* GetInstance()
-	{
-		static FSpatialSensingExtensionPICO Instance;
-		return &Instance;
-	}
+	static FSpatialSensingExtensionPICO* GetInstance();
 
 	static EResultPICO CastToPICOResult(XrResult Result);
 
-	/** IOpenXRExtensionPlugin implementation */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("SpatialSensingPICO"));
-	}
+	virtual void OnEvent(XrSession InSession, const XrEventDataBaseHeader* InHeader);
+	virtual void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	virtual void PostGetSystem(XrInstance InInstance, XrSystemId InSystem);
+	virtual void PostCreateSession(XrSession InSession);
+	virtual void OnDestroySession(XrSession InSession);
+	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace);
 	
-	virtual void OnEvent(XrSession InSession, const XrEventDataBaseHeader* InHeader) override;
-	virtual bool GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual void PostGetSystem(XrInstance InInstance, XrSystemId InSystem) override;
-	virtual void PostCreateSession(XrSession InSession) override;
-	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace) override;
+	virtual bool StartSenseDataProviderComplete(const XrFutureEXT& FutureHandle, FSenseDataProviderStartCompletionPICO& Completion,EResultPICO& OutResult);
+	virtual bool QuerySenseDataComplete(const XrSenseDataProviderPICO& ProviderHandle,const XrFutureEXT& FutureHandle, FSenseDataQueryCompletionPICO& Completion,EResultPICO& OutResult);
+	virtual bool GetQueriedSenseData(const XrSenseDataProviderPICO& ProviderHandle,const XrSenseDataSnapshotPICO& QueryResultHandle, FQueriedSenseDataPICO& QueriedSenseData,EResultPICO& OutResult);
+	virtual bool DestroySenseDataQueryResult(const XrSenseDataSnapshotPICO& QueryResultHandle,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityLocation(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FTransform& Transform,EResultPICO& OutResult);
+	virtual bool GetSpatialEntitySemantic(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<ESemanticLabelPICO>& Semantics,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityBoundary3D(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FBoundingBox3DPICO& Box,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityBoundary2D(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FBoundingBox2DPICO& Box,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityPolygon(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<FVector>& Vertices,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityTriangleMesh(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<FVector>& Vertices, TArray<uint16>& Triangles,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityLightEstimateData(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle,const FIntPoint& Size,ULightEstimationTexturePICO* OutEnvironmentTexture,EResultPICO& OutResult);
+	virtual bool GetSpatialEntityPlaneOrientation(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle,EPlaneOrientationPICO& PlaneOrientationPICO,EResultPICO& OutResult);
+
 	
-	bool StartSenseDataProviderComplete(const XrFutureEXT& FutureHandle, FSenseDataProviderStartCompletionPICO& Completion,EResultPICO& OutResult);
-	bool QuerySenseDataComplete(const XrSenseDataProviderPICO& ProviderHandle,const XrFutureEXT& FutureHandle, FSenseDataQueryCompletionPICO& Completion,EResultPICO& OutResult);
-	bool GetQueriedSenseData(const XrSenseDataProviderPICO& ProviderHandle,const XrSenseDataSnapshotPICO& QueryResultHandle, FQueriedSenseDataPICO& QueriedSenseData,EResultPICO& OutResult);
-	bool DestroySenseDataQueryResult(const XrSenseDataSnapshotPICO& QueryResultHandle,EResultPICO& OutResult);
-	bool GetSpatialEntityLocation(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FTransform& Transform,EResultPICO& OutResult);
-	bool GetSpatialEntitySemantic(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<ESemanticLabelPICO>& Semantics,EResultPICO& OutResult);
-	bool GetSpatialEntityBoundary3D(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FBoundingBox3DPICO& Box,EResultPICO& OutResult);
-	bool GetSpatialEntityBoundary2D(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, FBoundingBox2DPICO& Box,EResultPICO& OutResult);
-	bool GetSpatialEntityPolygon(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<FVector>& Vertices,EResultPICO& OutResult);
-	bool GetSpatialEntityTriangleMesh(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<FVector>& Vertices, TArray<uint16>& Triangles,EResultPICO& OutResult);
-	
-	bool EnumerateSpatialEntityComponentTypes(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<ESpatialEntityComponentTypePICO>& componentTypes,EResultPICO& OutResult);
-	bool AddPollFutureRequirement(const XrFutureEXT& FutureHandle, const FPICOPollFutureDelegate& Delegate);
+	virtual bool EnumerateSpatialEntityComponentTypes(const XrSenseDataSnapshotPICO& SnapshotHandle,const XrSpatialEntityIdPICO& EntityHandle, TArray<ESpatialEntityComponentTypePICO>& componentTypes,EResultPICO& OutResult);
+	virtual bool AddPollFutureRequirement(const XrFutureEXT& FutureHandle, const FPICOPollFutureDelegate& Delegate);
 
 	bool IsSupportsSpatialSensing() const {return bSupportsSpatialSensing; }
 	bool IsSupportsSpatialSensingEXT() const {return bSupportsSpatialSensingEXT; }
@@ -74,6 +72,7 @@ public:
 	PFN_xrGetAnchorUuidPICO						xrGetAnchorUuidPICO					= nullptr;
 	PFN_xrLocateAnchorPICO						xrLocateAnchorPICO					= nullptr;
 
+	PFN_xrReleaseEnvironmentTextureImagePICO xrReleaseEnvironmentTextureImagePICO = nullptr;
 
 protected:
 	EProviderTypePICO GetProviderTypeByHandle(const XrSenseDataProviderPICO& Handle);
@@ -83,6 +82,15 @@ private:
 	void ApplicationResumeDelegate();
 	void PollEvent(const XrEventDataBuffer* EventData);
 	void PXR_PollFuture();
+	bool HasValidTrackingSystem() const { return XRTrackingSystem != nullptr; }
+	void InitializeCachedLightEstimateInfoPico();
+	const XrSpatialEntityLightEstimationDataPICO& GetCachedLightEstimateInfoPico()  const  { return CachedLightEstimateInfoPico; }
+#if PLATFORM_ANDROID
+	const XrLightEstimationInfoEnvironmentTextureVulkanPICO& GetCachedLightEstimationTextureVulkan()  const  { return CachedLightEstimationTextureVulkan; }
+#endif
+	
+	void UpdateCachedLightEstimateInfoPico(const XrSpatialEntityLightEstimationDataPICO& EntityLightEstimationInfo);
+
 	
 	TQueue<FFutureMessagePICO> FutureQueueForProviders;
 	TMap<uint64_t, FPICOPollFutureDelegate> FutureToDelegateMap;
@@ -98,33 +106,36 @@ private:
 
 	uint64 GlobalUUIDCount;
 	FRWLock DestroyLock;
+
+	XrSpatialEntityLightEstimationDataPICO CachedLightEstimateInfoPico={};
+#if PLATFORM_ANDROID
+	XrLightEstimationInfoEnvironmentTextureVulkanPICO CachedLightEstimationTextureVulkan = {};
+#endif
 };
 
-class FMixedRealityPICO :public IOpenXRExtensionPlugin
+class FMixedRealityPICO
 {
 public:
 	FMixedRealityPICO();
 	virtual ~FMixedRealityPICO() {}
 
-	void Register();
-	void Unregister();
-	
-	virtual void OnDestroySession(XrSession InSession) override;
-	virtual void PostCreateSession(XrSession InSession) override;
-	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace InTrackingSpace) override;
+	virtual void OnDestroySession(XrSession InSession);
+	virtual void PostCreateSession(XrSession InSession);
+	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace InTrackingSpace);
 	
 	virtual bool CreateProvider(const FSenseDataProviderCreateInfoBasePICO& CreateInfo,EResultPICO& OutResult) =0;
-	bool StartProvider(const FPICOPollFutureDelegate& StartSenseDataProviderDelegate,EResultPICO& OutResult);
-	bool StopProvider(EResultPICO& OutResult);
-	bool DestroyProvider(EResultPICO& OutResult);
-	EMRStatePICO GetSenseDataProviderState() const;
+	virtual bool StartProvider(const FPICOPollFutureDelegate& StartSenseDataProviderDelegate,EResultPICO& OutResult);
+	virtual bool StopProvider(EResultPICO& OutResult);
+	virtual bool DestroyProvider(EResultPICO& OutResult);
+	virtual EMRStatePICO GetSenseDataProviderState() const;
 
 	bool IsHandleValid() const { return ProviderHandle!=XR_NULL_HANDLE; }
 	bool IsInitialized() const { return GetSenseDataProviderState() == EMRStatePICO::Initialized; }
 	bool IsRunning() const { return GetSenseDataProviderState() == EMRStatePICO::Running; }
 	bool IsEqualProvider(const XrSenseDataProviderPICO& Handle) const { return ProviderHandle==Handle;}
 protected:
-	EProviderTypePICO GetProviderType();
+	virtual EProviderTypePICO GetProviderType();
+	bool HasValidTrackingContext() const { return XRTrackingSystem != nullptr && Session != XR_NULL_HANDLE && TrackingSpace != XR_NULL_HANDLE; }
 	
 	EProviderTypePICO Type=EProviderTypePICO::Pico_Provider_Unknown;
 	XrSenseDataProviderPICO ProviderHandle=XR_NULL_HANDLE;

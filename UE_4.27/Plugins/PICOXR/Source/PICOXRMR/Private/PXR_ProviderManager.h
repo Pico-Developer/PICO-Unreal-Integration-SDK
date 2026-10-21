@@ -58,6 +58,7 @@ public:
 	bool GetSpatialEntityBoundary2D(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, FPICOBoundingBox2D& Box);
 	bool GetSpatialEntityPolygon(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<FVector>& Vertices);
 	bool GetSpatialEntityTriangleMesh(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<FVector>& Vertices, TArray<uint16>& Triangles);
+	bool GetSpatialEntityPlaneOrientation(const FPICOSpatialHandle& SnapshotHandle, const FPICOSpatialHandle& EntityHandle, EPICOPlaneOrientation& PlaneOrientationPICO);
 
 	bool EnumerateSpatialEntityComponentTypes(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<EPICOSpatialEntityComponentType>& componentTypes);
 	EPICOProviderType GetProviderType();
@@ -283,8 +284,39 @@ private:
 	TMap<FPICOSpatialUUID, FPICOSpatialMeshInfo> CachedUUIDToMRMeshInfoMap;
 
 	EPICOSpatialMeshLod CurrentLod;
+};
+
+class PXR_PlaneProvider : public IPXR_BaseProvider
+{
+public:
+	PXR_PlaneProvider();
+
+	static PXR_PlaneProvider* GetInstance()
+	{
+		static PXR_PlaneProvider Instance;
+		return &Instance;
+	}
+
+	virtual bool CreateProvider(const FPICOSenseDataProviderCreateInfoBase& CreateInfo) override;
+	virtual bool StopProvider() override;
+	bool RequestSpatialTrianglePlane(const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult);
+	bool GetSpatialTrianglePlaneInfos(const FPICOSpatialHandle& FutureHandle,const FTransform& TrackingToWorld,
+		const FQuat& BaseOrientation,
+		const FVector& BaseOffsetInMeters,
+		float WorldToMetersScale,
+		TArray<FPICOSpatialPlaneInfo>& PlaneInfos,EPICOResult& OutResult);
+
+	void ClearPlaneProviderBuffer();
+	
+private:
+	bool IsContainsInLastUpdate(const FPICOSpatialUUID& UUID);
+	uint64 GetLastUpdateTimeByUUID(const FPICOSpatialUUID& UUID);
+	
+	TMap<FPICOSpatialUUID, FPICOSpatialPlaneInfo> CachedUUIDToMRPlaneInfoMap;
+
 	mutable FCriticalSection CriticalSection;
 };
+
 
 class PXR_SceneProvider : public IPXR_BaseProvider
 {

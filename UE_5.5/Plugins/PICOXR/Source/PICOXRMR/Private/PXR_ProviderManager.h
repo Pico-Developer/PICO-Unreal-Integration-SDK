@@ -1,10 +1,13 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "PXR_AnchorComponent.h"
 #include "PXR_HMD.h"
+#include "PXR_MRTextures.h"
 #include "PXR_MRTypes.h"
 
 DECLARE_DELEGATE_OneParam(FPICOPollFutureDelegate, const FPICOSpatialHandle&);
@@ -58,9 +61,12 @@ public:
 	bool GetSpatialEntityBoundary2D(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, FPICOBoundingBox2D& Box);
 	bool GetSpatialEntityPolygon(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<FVector>& Vertices);
 	bool GetSpatialEntityTriangleMesh(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<FVector>& Vertices, TArray<uint16>& Triangles);
-
+	bool GetSpatialEntityPlaneOrientation(const FPICOSpatialHandle& SnapshotHandle, const FPICOSpatialHandle& EntityHandle, EPICOPlaneOrientation& PlaneOrientationPICO);
+	bool GetSpatialEntityLightEstimateData(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle,const FIntPoint& Size,UPICOLightEstimationTexture* OutEnvironmentTexture);
 	bool EnumerateSpatialEntityComponentTypes(const FPICOSpatialHandle& SnapshotHandle,const FPICOSpatialHandle& EntityHandle, TArray<EPICOSpatialEntityComponentType>& componentTypes);
+	EPICOSpatialEntityComponentType CastSpatialEntityComponent(const PxrSpatialEntityComponentType& ComponentType);
 	EPICOProviderType GetProviderType();
+
 protected:
 	FPICOSpatialHandle ProviderHandle;
 	TQueue<FFutureMessage> FutureQueueForProviders;
@@ -72,6 +78,15 @@ protected:
 
 	FRWLock DestroyLock;
 	EPICOProviderType Type=EPICOProviderType::Pico_Provider_Unknown;
+	const PxrSpatialEntityLightEstimationInfo& GetCachedLightEstimateInfoPico()  const  { return CachedLightEstimateInfoPico; }
+	const PxrLightEstimationInfoEnvironmentTextureVulkan& GetCachedLightEstimationTextureVulkan()  const  { return CachedLightEstimationTextureVulkan; }
+
+	void UpdateCachedLightEstimateInfoPico(const PxrSpatialEntityLightEstimationInfo& EntityLightEstimationInfo);
+	void InitializeCachedLightEstimateInfoPico();
+	
+private:
+	PxrSpatialEntityLightEstimationInfo CachedLightEstimateInfoPico={};
+	PxrLightEstimationInfoEnvironmentTextureVulkan CachedLightEstimationTextureVulkan = {};
 };
 
 struct FAnchorCreateInfo
@@ -161,7 +176,6 @@ private:
 	static uint64 GlobalUUIDCount;
 	
 };
-
 
 class PXR_AnchorProvider : public IPXR_BaseProvider
 {
@@ -283,6 +297,36 @@ private:
 	TMap<FPICOSpatialUUID, FPICOSpatialMeshInfo> CachedUUIDToMRMeshInfoMap;
 
 	EPICOSpatialMeshLod CurrentLod;
+};
+
+class PXR_PlaneProvider : public IPXR_BaseProvider
+{
+public:
+	PXR_PlaneProvider();
+
+	static PXR_PlaneProvider* GetInstance()
+	{
+		static PXR_PlaneProvider Instance;
+		return &Instance;
+	}
+
+	virtual bool CreateProvider(const FPICOSenseDataProviderCreateInfoBase& CreateInfo) override;
+	virtual bool StopProvider() override;
+	bool RequestSpatialTrianglePlane(const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult);
+	bool GetSpatialTrianglePlaneInfos(const FPICOSpatialHandle& FutureHandle,const FTransform& TrackingToWorld,
+		const FQuat& BaseOrientation,
+		const FVector& BaseOffsetInMeters,
+		float WorldToMetersScale,
+		TArray<FPICOSpatialPlaneInfo>& PlaneInfos,EPICOResult& OutResult);
+
+	void ClearPlaneProviderBuffer();
+	
+private:
+	bool IsContainsInLastUpdate(const FPICOSpatialUUID& UUID);
+	uint64 GetLastUpdateTimeByUUID(const FPICOSpatialUUID& UUID);
+	
+	TMap<FPICOSpatialUUID, FPICOSpatialPlaneInfo> CachedUUIDToMRPlaneInfoMap;
+
 	mutable FCriticalSection CriticalSection;
 };
 
@@ -311,5 +355,27 @@ private:
 	TMap<FPICOSpatialUUID, TSharedRef<FPICOBoundingBox3D>> EntityToBoundingBox3DMap;
 	TMap<FPICOSpatialUUID, TSharedRef<FPICOBoundingBox2D>> EntityToBoundingBox2DMap;
 	TMap<FPICOSpatialUUID,TSharedRef<TArray<FVector>>> EntityToPolygonMap;
+
+};
+
+class PXR_LightEstimationProvider : public IPXR_BaseProvider
+{
+public:
+	PXR_LightEstimationProvider();
+
+	static PXR_LightEstimationProvider* GetInstance()
+	{
+		static PXR_LightEstimationProvider Instance;
+		return &Instance;
+	}
+
+	virtual bool CreateProvider(const FPICOSenseDataProviderCreateInfoBase& CreateInfo) override;
+	bool RequestLightEstimation(const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult);
+	bool GetLightEstimationInfo(const FPICOSpatialHandle& FutureHandle,UPICOLightEstimationTexture* TextureCube, float& SourceCubemapAngle, EPICOResult& OutResult);
+	EPICOXRSpatialLightEstimationResolution GetCurrentLightEstimationResolution();
+	FIntPoint GetLightEstimationSize() const { return LightEstimationSize; }
+private:
+	EPICOXRSpatialLightEstimationResolution CurrentResolution;
+	FIntPoint LightEstimationSize;
 
 };

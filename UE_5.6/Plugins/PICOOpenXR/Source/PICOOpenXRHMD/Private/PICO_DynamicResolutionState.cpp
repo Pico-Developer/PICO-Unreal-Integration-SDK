@@ -10,11 +10,10 @@
 // FDynamicResolutionStatePICO implementation
 //-------------------------------------------------------------------------------------------------
 
-FDynamicResolutionStatePICO::FDynamicResolutionStatePICO(class FHMDPICO* HMDPICO, float MinimumScale)
+FDynamicResolutionStatePICO::FDynamicResolutionStatePICO(class FHMDPICO* HMDPICO)
 	: PICOHMD(HMDPICO)
 	, ResolutionFraction(-1.0f)
 	, ResolutionFractionUpperBound(-1.0f)
-	, MinimumResolutionScale(MinimumScale)
 {
 	check(PICOHMD != nullptr);
 }
@@ -35,8 +34,7 @@ void FDynamicResolutionStatePICO::SetupMainViewFamily(class FSceneViewFamily& Vi
 
 	if (IsEnabled())
 	{
-		float PixelDensity = PICOHMD->CurrentDynamicPixelDensity;
-		ResolutionFraction = FMath::Clamp(PixelDensity, MinimumResolutionScale, 1.0f);
+		ResolutionFraction = PICOHMD->CurrentDynamicPixelDensity;
 		ResolutionFractionUpperBound = 1.0f;
 		ViewFamily.SetScreenPercentageInterface(new FLegacyScreenPercentageDriver(ViewFamily, ResolutionFraction, ResolutionFractionUpperBound));
 	}

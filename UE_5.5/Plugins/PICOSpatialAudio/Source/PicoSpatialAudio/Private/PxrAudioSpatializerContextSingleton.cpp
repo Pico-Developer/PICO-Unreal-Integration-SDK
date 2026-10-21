@@ -9,7 +9,7 @@ namespace Pxr_Audio
 		FContextSingleton* FContextSingleton::Instance = nullptr;
 		std::atomic<bool> FContextSingleton::Initialized(false);
 
-		PxrAudioSpatializer_Result FContextSingleton::Init(const PxrAudioSpatializer_RenderingMode Quality,
+		PxrAudioSpatializer_Result FContextSingleton::Init(const PxrAudioSpatializer_RenderingQuality Quality,
 		                                                   const size_t FramesPerBuffer,
 		                                                   const size_t SampleRate)
 		{
@@ -59,28 +59,6 @@ namespace Pxr_Audio
 			return Api->GetVersion(Major, Minor, Patch);
 		}
 
-		PxrAudioSpatializer_Result FContextSingleton::SubmitMesh(
-			const float* Vertices,
-			int VerticesCount, const int* Indices,
-			int IndicesCount,
-			PxrAudioSpatializer_AcousticsMaterial Material,
-			int* GeometryId) const
-		{
-			return Api->SubmitMesh(Vertices, VerticesCount, Indices, IndicesCount, Material, GeometryId);
-		}
-
-		PxrAudioSpatializer_Result FContextSingleton::SubmitMeshAndMaterialFactor(
-			const float* Vertices, int VerticesCount,
-			const int* Indices, int IndicesCount,
-			const float* AbsorptionFactor,
-			float ScatteringFactor,
-			float TransmissionFactor,
-			int* GeometryId) const
-		{
-			return Api->SubmitMeshAndMaterialFactor(Vertices, VerticesCount, Indices, IndicesCount,
-			                                        AbsorptionFactor, ScatteringFactor, TransmissionFactor, GeometryId);
-		}
-
 		PxrAudioSpatializer_Result FContextSingleton::SubmitMeshWithConfig(
 			const float* Vertices,
 			int VerticesCount,
@@ -90,6 +68,13 @@ namespace Pxr_Audio
 			int* GeometryId) const
 		{
 			return Api->SubmitMeshWithConfig(Vertices, VerticesCount, Indices, IndicesCount, Config, GeometryId);
+		}
+
+		PxrAudioSpatializer_Result FContextSingleton::UpdateMesh(int GeometryId, const float* Vertices,
+			int VerticesCount, const int* Indices, int IndicesCount,
+			const PxrAudioSpatializer_AcousticMeshConfig* Config, int* NewGeometryId) const
+		{
+			return Api->UpdateMesh(GeometryId, Vertices, VerticesCount, Indices, IndicesCount, Config, NewGeometryId);
 		}
 
 		PxrAudioSpatializer_Result FContextSingleton::RemoveMesh(int GeometryId) const

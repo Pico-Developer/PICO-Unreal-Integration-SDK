@@ -9,6 +9,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "pxr_audio_spatializer_channel_config.h"
 
 #ifndef PXR_AUDIO_SPATIALIZER_EXPORT
 #if defined(_MSC_VER)
@@ -45,17 +46,30 @@ typedef enum {
     PASP_SUCCESS = 0,
     PASP_SOURCE_NOT_FOUND = -1001,
     PASP_SOURCE_DATA_NOT_FOUND = -1002,
-    PASP_SCENE_NOT_FOUND = -1003,
-    PASP_SCENE_MESH_NOT_FOUND = -1004,
-    PASP_ILLEGAL_VALUE = -1005,
-    PASP_CONTEXT_NOT_CREATED = -1006,
-    PASP_CONTEXT_NOT_READY = -1007,
-    PASP_CONTEXT_REPEATED_INITIALIZATION = -1008,
-    PASP_ENVIRONMENTAL_ACOUSTICS_DISABLED = -1009,  ///< API is disabled in current build
+    PASP_SOUND_FIELD_NOT_FOUND = -1003,
+    PASP_SOUND_FIELD_DATA_NOT_FOUND = -1004,
+    PASP_SCENE_NOT_FOUND = -1005,
+    PASP_SCENE_MESH_NOT_FOUND = -1006,
+    PASP_ILLEGAL_VALUE = -1007,
+    PASP_CONTEXT_NOT_CREATED = -1008,
+    PASP_CONTEXT_NOT_READY = -1009,
+    PASP_CONTEXT_REPEATED_INITIALIZATION = -1010,
+    PASP_ENVIRONMENTAL_ACOUSTICS_DISABLED = -1011,  ///< API is disabled in current build
                                                     ///< because environmental acoustics is disabled.
-    PASP_API_DISABLED = -1010,                      ///< API is disabled in current build
-    PASP_SOURCE_INUSE = -1011,
+    PASP_API_DISABLED = -1012,                      ///< API is disabled in current build
+    PASP_SOURCE_INUSE = -1013,
+    PASP_NOT_IMPLEMENTED = -1014,
 } PxrAudioSpatializer_Result;
+
+/*! \enum PxrAudioSpatializer_RenderingMode
+ *   Global rendering mode setting.
+ */
+typedef enum {
+    PASP_FreeField = 0,
+    PASP_FreeFieldDirectConvolution = 1,
+    PASP_LowComplexity = 2,
+    PASP_EnvironmentalAcoustics=3
+} PxrAudioSpatializer_RenderingMode;
 
 /*! \enum PxrAudioSpatializer_PlaybackMode
  *   Global playback mode. You can choose from binaural or loudspeaker array output.
@@ -65,7 +79,7 @@ typedef enum {
     PASP_LOUDSPEAKERS_OUT,
 } PxrAudioSpatializer_PlaybackMode;
 
-/*! \enum PxrAudioSpatializer_RenderingMode
+/*! \enum PxrAudioSpatializer_RenderingQuality
  *   Global rendering quality setting.
  */
 typedef enum {
@@ -79,7 +93,7 @@ typedef enum {
     PASP_AMBISONIC_FIFTH_ORDER,
     PASP_AMBISONIC_SIXTH_ORDER,
     PASP_AMBISONIC_SEVENTH_ORDER,
-} PxrAudioSpatializer_RenderingMode;
+} PxrAudioSpatializer_RenderingQuality;
 
 /*! \enum PxrAudioSpatializer_SourceMode
  *   Source-wise rendering mode. Currently, we only support SPATIALIZE and BYPASS.
@@ -97,7 +111,8 @@ typedef enum {
         0,  ///< Renderer doesn't attenuate source volume based on source-listener distance
     PASP_SOURCE_ATTENUATION_MODE_FIXED = 1,           ///< Same as PASP_SOURCE_ATTENUATION_MODE_NONE
     PASP_SOURCE_ATTENUATION_MODE_INVERSE_SQUARE = 2,  ///< Calculate source attenuation according to Inverse-Square Law
-    PASP_SOURCE_ATTENUATION_MODE_CUSTOMIZED = 3,      ///< Calculate source attenuation using external callback function
+    PASP_SOURCE_ATTENUATION_MODE_ROLL_OFF = 3,        ///< Calculate source attenuation according to Roll-Off Law
+    PASP_SOURCE_ATTENUATION_MODE_CUSTOMIZED = ~0u,      ///< Calculate source attenuation using external callback function
 } PxrAudioSpatializer_SourceAttenuationMode;
 
 /*! \enum PxrAudioSpatializer_AcousticsMaterial
@@ -242,6 +257,28 @@ enum PxrAudioSpatializer_SourceProperty {
     PASP_SourceProperty_RangeMax = (1u << 13),
     PASP_SourceProperty_All = ~0u,
     PASP_SourceProperty_None = 0u,
+};
+
+typedef struct PxrAudioSpatializer_SoundFieldConfig {
+    /// Sound field format definition (can't be changed after creating sound field)
+    PxrAudioSpatializer_ChannelConfig channel_config;
+    PxrAudioSpatializer_ChannelMask channel_mask;
+
+    /// Sound field pose
+    float front[3] = {0.f, 0.f, 1.f};
+    float up[3] = {0.f, 1.f, 0.f};
+
+    /// Mix control
+    float master_gain = 1.0f;  ///< Master gain of sound field.
+    float lfe_gain = 0.0f;     ///< LFE gain of sound field.
+} PxrAudioSpatializer_SoundFieldConfig;
+
+enum PxrAudioSpatializer_SoundFieldProperty {
+    PASP_SoundFieldProperty_Orientation = 1u,  ///< float[6]
+    PASP_SoundFieldProperty_MasterGain = (1u << 1),
+    PASP_SoundFieldProperty_LfeGain = (1u << 2),
+    PASP_SoundFieldProperty_All = ~0u,
+    PASP_SoundFieldProperty_None = 0u,
 };
 
 typedef struct PxrAudioSpatializer_AcousticMeshConfig {

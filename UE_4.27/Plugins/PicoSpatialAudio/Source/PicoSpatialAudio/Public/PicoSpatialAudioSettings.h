@@ -24,5 +24,5 @@ public:
 
 	// Global Rendering Quality for Pico Spatial Audio
 	UPROPERTY(GlobalConfig, EditAnywhere, Category = "Rendering Quality")
-	EPxrAudioSpatializer_RenderingMode RenderingMode;
+	EPxrAudioSpatializer_RenderingQuality RenderingQuality;
 };

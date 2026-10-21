@@ -292,7 +292,10 @@ struct PICOPluginWrapper
 	PICO_DECLARE_ENTRY_POINT(PersistSpatialAnchorComplete);
 	PICO_DECLARE_ENTRY_POINT(UnpersistSpatialAnchorAsync);
 	PICO_DECLARE_ENTRY_POINT(UnpersistSpatialAnchorComplete);
-	
+	/*
+	 * mr sdk 3.0 light estimation
+	 */
+	PICO_DECLARE_ENTRY_POINT(ReleaseEnvironmentTextureImage);
 	/**
 	*  mr sdk 3.0 scene capture
 	*/

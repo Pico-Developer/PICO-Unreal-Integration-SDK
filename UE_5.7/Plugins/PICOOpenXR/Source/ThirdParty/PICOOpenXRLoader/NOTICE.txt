@@ -1,0 +1,35 @@
+PICO OpenXR Loader Notice
+=========================
+
+This directory contains the OpenXR loader integration distributed with the
+PICO OpenXR Unreal Engine plugin.
+
+Upstream origin
+---------------
+- Portions of the headers under include/openxr/ are derived from the Khronos
+  OpenXR SDK and OpenXR-SDK-Source projects:
+  - https://github.com/KhronosGroup/OpenXR-SDK
+  - https://github.com/KhronosGroup/OpenXR-SDK-Source
+- Khronos-derived files retain their original copyright and SPDX notices.
+- Upstream OpenXR header files in this package indicate the license as
+  Apache-2.0 OR MIT.
+
+PICO modifications and additions
+--------------------------------
+- PICO distributes libopenxr_loader_pico.so as part of this package.
+- PICO-specific extension declarations are provided in:
+  - include/openxr/openxr_pico.h
+  - include/openxr_pico/private/ext_battery_state_display.h
+- Additional generated extension declarations may be present under
+  include/openxr_pico/ and can remain Khronos-derived where their file headers
+  state so.
+
+Redistribution notes
+--------------------
+- When redistributing this plugin, preserve the original Khronos notices in the
+  Khronos-derived source files.
+- Include the upstream OpenXR license texts provided at:
+  - ../Licenses/OpenXR-SDK.txt
+  - ../Licenses/OpenXR-SDK-MIT.txt
+- Retain this notice file so recipients can identify the upstream origin and
+  PICO modifications included in this package.

@@ -1,8 +1,8 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PXR_SpatialAnchorActor.h"
-
 #include "PXR_AnchorComponent.h"
 #include "PXR_MRAsyncActions.h"
 #include "PXR_MRFunctionLibrary.h"

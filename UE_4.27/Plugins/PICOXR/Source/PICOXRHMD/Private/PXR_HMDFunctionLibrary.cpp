@@ -52,11 +52,6 @@ FVector UPICOXRHMDFunctionLibrary::PXR_GetCurrentPosition()
     return  Position;
 }
 
-bool UPICOXRHMDFunctionLibrary::PXR_DoesSupportPositionalTracking()
-{  
-    return  GetPICOXRHMD()->DoesSupportPositionalTracking();
-}
-
 FVector UPICOXRHMDFunctionLibrary::PXR_GetAngularVelocity()
 {
     FVector AngularVelocity;

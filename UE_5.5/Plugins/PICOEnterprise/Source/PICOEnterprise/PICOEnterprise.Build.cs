@@ -39,9 +39,6 @@ public class PICOEnterprise : ModuleRules
 
         if (Target.Platform == UnrealTargetPlatform.Android)
         {
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "../../Libs/arm64-v8a/libCameraRenderingPlugin.so"));
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "../../Libs/arm64-v8a/libpvrcapturelib.so"));
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "../../Libs/arm64-v8a/libpvrcapturelib.so"));
             // Vulkan
             AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
             {

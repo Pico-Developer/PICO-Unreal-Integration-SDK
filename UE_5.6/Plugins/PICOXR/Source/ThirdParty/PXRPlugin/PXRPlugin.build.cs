@@ -15,7 +15,6 @@ public class PXRPlugin : ModuleRules
 
         if (Target.Platform == UnrealTargetPlatform.Android)
         {
-            RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "PXRPlugin/Lib/armeabi-v7a/libpxr_api.so"));
 			RuntimeDependencies.Add(Path.Combine(ModuleDirectory, "PXRPlugin/Lib/arm64-v8a/libpxr_api.so"));
 		}
 	}

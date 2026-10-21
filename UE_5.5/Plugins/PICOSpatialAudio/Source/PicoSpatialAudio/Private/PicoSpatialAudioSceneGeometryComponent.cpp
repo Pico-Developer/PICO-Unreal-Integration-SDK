@@ -32,28 +32,16 @@ void UPicoSpatialAudioSceneGeometryComponent::TickComponent(float DeltaTime, ELe
 
 	if (!bSubmitted)
 	{
-		const int32 SubmittedTriangleNum = SubmitToContext();
-		if (SubmittedTriangleNum > 0)
-		{
-			UE_LOG(LogPicoSpatialAudio, Display, TEXT("Submit mesh of %d triangles: %s"), SubmittedTriangleNum,
-			       *GetOwner()->GetName());
-		}
+		SubmitToContext();
+		SubmitBakedMeshToContext();
 
-		const int32 SubmittedBakedTriangleNum = SubmitBakedMeshToContext();
-		if (SubmittedBakedTriangleNum > 0)
-		{
-			UE_LOG(LogPicoSpatialAudio, Display, TEXT("Submit baked mesh of %d triangles: %s"),
-			       SubmittedBakedTriangleNum,
-			       *GetOwner()->GetName());
-		}
-
-		PreviousTransformUnreal = GetOwner()->GetTransform();
+		PreviousTransformUnreal = GetComponentTransform();
 		bSubmitted = true;
 	}
 
 	//	Update geometry transform
 	// 3D transform
-	const FTransform Transform = GetOwner()->GetTransform();
+	const FTransform Transform = GetComponentTransform();
 	if (!Transform.Equals(PreviousTransformUnreal))
 	{
 		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(Transform, MeshConfig.to_world_transform);
@@ -118,19 +106,114 @@ void UPicoSpatialAudioSceneGeometryComponent::EndPlay(const EEndPlayReason::Type
 int32 UPicoSpatialAudioSceneGeometryComponent::SubmitToContext()
 {
 	if (MaterialSettings == nullptr)
+	{
+		UE_LOG(LogPicoSpatialAudio, Warning,
+			TEXT("Skipped UPicoSpatialAudioSceneGeometryComponent::SubmitToContext() for %s, because MaterialSettings is nullptr"),
+			*GetOwner()->GetName());
+		return 0;
+	}
+
+	if (!bUseExternalMesh)
+	{
+		//	1. Gather list of UStaticMesh that need to be combined;
+		GatheredStaticMeshes.Reset(0);
+		GatheredStaticMeshTransforms.Reset(0);
+		GatherStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, true);
+
+		//	2. Batch UStaticMesh into one vertices and indices buffer;
+		//	2.1 count gathered vertices and indices
+		BatchStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, GetComponentTransform(),
+						  BatchedMeshVerticesBuffer,
+						  BatchedMeshIndicesBuffer);
+	}
+
+	//	3. Submit batched UStaticMeshes to engine
+	return SubmitToContextInternal(BatchedMeshVerticesBuffer, BatchedMeshIndicesBuffer,
+	                               "mesh", &InternalGeomId);
+}
+
+int32 UPicoSpatialAudioSceneGeometryComponent::SubmitBakedMeshToContext()
+{
+	if (MaterialSettings == nullptr)
 		return 0;
 
-	//	1. Gather list of UStaticMesh that need to be combined;
-	GatheredStaticMeshes.Reset(0);
-	GatheredStaticMeshTransforms.Reset(0);
-	GatherStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, true);
+	//	3. Submit batched UStaticMeshes to engine
+	return SubmitToContextInternal(BatchedBakedMeshVerticesBuffer, BatchedBakedMeshIndicesBuffer,
+	                               "baked mesh", &InternalBakedGeomId);
+}
 
-	//	2. Batch UStaticMesh into one vertices and indices buffer;
-	//	2.1 count gathered vertices and indices
-	BatchStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, GetOwner()->GetTransform(),
-	                  BatchedMeshVerticesBuffer,
-	                  BatchedMeshIndicesBuffer);
+int32 UPicoSpatialAudioSceneGeometryComponent::SubmitExternalMeshData(const TArray<FVector>& Vertices,
+	const TArray<int32>& Indices)
+{
+	BatchedMeshVerticesBuffer.Reset(0);
+	BatchedMeshIndicesBuffer.Reset(0);
+	for (const auto& Vertex : Vertices)
+	{
+		float OutVertex[3];
+		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(
+			Vertex, OutVertex);
+		BatchedMeshVerticesBuffer.Add(OutVertex[0]);
+		BatchedMeshVerticesBuffer.Add(OutVertex[1]);
+		BatchedMeshVerticesBuffer.Add(OutVertex[2]);
+	}
 
+	BatchedMeshIndicesBuffer = Indices;
+
+	bUseExternalMesh = true;
+	bSubmitted = false;
+
+	UE_LOG(LogPicoSpatialAudio, Display, TEXT("Submitted external mesh data for %s, triangle count == %d"),
+		*GetOwner()->GetName(),
+		BatchedMeshIndicesBuffer.Num() / 3);
+
+	return BatchedMeshIndicesBuffer.Num() / 3;
+}
+
+int32 UPicoSpatialAudioSceneGeometryComponent::UpdateExternalMeshData(const TArray<FVector>& Vertices,
+	const TArray<int32>& Indices)
+{
+	BatchedMeshVerticesBuffer.Reset(0);
+	BatchedMeshIndicesBuffer.Reset(0);
+	for (const auto& Vertex : Vertices)
+	{
+		float OutVertex[3];
+		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(
+			Vertex, OutVertex);
+		BatchedMeshVerticesBuffer.Add(OutVertex[0]);
+		BatchedMeshVerticesBuffer.Add(OutVertex[1]);
+		BatchedMeshVerticesBuffer.Add(OutVertex[2]);
+	}
+
+	BatchedMeshIndicesBuffer = Indices;
+
+	bUseExternalMesh = true;
+
+	UE_LOG(LogPicoSpatialAudio, Display, TEXT("Updated external mesh data for %s, triangle count == %d"),
+		*GetOwner()->GetName(),
+		BatchedMeshIndicesBuffer.Num() / 3);
+
+	return BatchedMeshIndicesBuffer.Num() / 3;
+}
+
+int32 UPicoSpatialAudioSceneGeometryComponent::UpdateMeshInContext()
+{
+	if (MaterialSettings == nullptr)
+		return 0;
+
+	if (!bUseExternalMesh)
+	{
+		//	1. Gather list of UStaticMesh that need to be combined;
+		GatheredStaticMeshes.Reset(0);
+		GatheredStaticMeshTransforms.Reset(0);
+		GatherStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, true);
+    
+		//	2. Batch UStaticMesh into one vertices and indices buffer;
+		//	2.1 count gathered vertices and indices
+		BatchStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, GetComponentTransform(),
+						  BatchedMeshVerticesBuffer,
+						  BatchedMeshIndicesBuffer);
+	}
+	
 	//	3. Submit batched UStaticMeshes to engine
 	if (BatchedMeshVerticesBuffer.Num() > 0 && BatchedMeshIndicesBuffer.Num() > 0)
 	{
@@ -142,61 +225,27 @@ int32 UPicoSpatialAudioSceneGeometryComponent::SubmitToContext()
 		MeshConfig.absorption[3] = MaterialSettings->AbsorptionBand3;
 		MeshConfig.scattering = MaterialSettings->Scattering;
 		MeshConfig.transmission = MaterialSettings->Transmission;
-		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(GetOwner()->GetTransform(),
-		                                                             MeshConfig.to_world_transform);
-		const auto Result = Pxr_Audio::Spatializer::FContextSingleton::GetInstance()->SubmitMeshWithConfig(
+		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(GetComponentTransform(),
+																	 MeshConfig.to_world_transform);
+		const auto Result = Pxr_Audio::Spatializer::FContextSingleton::GetInstance()->UpdateMesh(
+			InternalGeomId,
 			BatchedMeshVerticesBuffer.GetData(), BatchedMeshVerticesBuffer.Num() / 3,
-			BatchedMeshIndicesBuffer.GetData(), BatchedMeshIndicesBuffer.Num() / 3, &MeshConfig, &InternalGeomId);
+			BatchedMeshIndicesBuffer.GetData(), BatchedMeshIndicesBuffer.Num() / 3, &MeshConfig,
+			&InternalGeomId);
+
+		UE_LOG(LogPicoSpatialAudio, Display, TEXT("Updated mesh of %d triangles for Actor: %s. Geometry ID: %d"),
+				   BatchedMeshIndicesBuffer.Num() / 3, *GetOwner()->GetName(), InternalGeomId);
 
 		if (Result != PASP_SUCCESS)
 		{
-			UE_LOG(LogPicoSpatialAudio, Error, TEXT("Failed to Submit mesh for Actor: %s"), *GetOwner()->GetName());
+			UE_LOG(LogPicoSpatialAudio, Error, TEXT("Failed to update mesh for Actor: %s"), *GetOwner()->GetName());
 		}
 
 		Pxr_Audio::Spatializer::FListener::bNeedSceneCommit = true;
 		return BatchedMeshIndicesBuffer.Num() / 3;
 	}
-	else
-	{
-		return 0;
-	}
-}
-
-int32 UPicoSpatialAudioSceneGeometryComponent::SubmitBakedMeshToContext()
-{
-	if (MaterialSettings == nullptr)
-		return 0;
-
-	//	3. Submit batched UStaticMeshes to engine
-	if (BatchedBakedMeshVerticesBuffer.Num() > 0 && BatchedBakedMeshIndicesBuffer.Num() > 0)
-	{
-		MeshConfig.enabled = true;
-		MeshConfig.material_type = static_cast<PxrAudioSpatializer_AcousticsMaterial>(MaterialSettings->MaterialPreset);
-		MeshConfig.absorption[0] = MaterialSettings->AbsorptionBand0;
-		MeshConfig.absorption[1] = MaterialSettings->AbsorptionBand1;
-		MeshConfig.absorption[2] = MaterialSettings->AbsorptionBand2;
-		MeshConfig.absorption[3] = MaterialSettings->AbsorptionBand3;
-		MeshConfig.scattering = MaterialSettings->Scattering;
-		MeshConfig.transmission = MaterialSettings->Transmission;
-		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(GetOwner()->GetTransform(),
-		                                                             MeshConfig.to_world_transform);
-		const auto Result = Pxr_Audio::Spatializer::FContextSingleton::GetInstance()->SubmitMeshWithConfig(
-			BatchedBakedMeshVerticesBuffer.GetData(), BatchedBakedMeshVerticesBuffer.Num() / 3,
-			BatchedBakedMeshIndicesBuffer.GetData(), BatchedBakedMeshIndicesBuffer.Num() / 3, &MeshConfig, &InternalBakedGeomId);
-
-		if (Result != PASP_SUCCESS)
-		{
-			UE_LOG(LogPicoSpatialAudio, Error, TEXT("Failed to submit baked mesh for Actor: %s"),
-			       *GetOwner()->GetName());
-		}
-
-		Pxr_Audio::Spatializer::FListener::bNeedSceneCommit = true;
-		return BatchedBakedMeshIndicesBuffer.Num() / 3;
-	}
-	else
-	{
-		return 0;
-	}
+	
+	return 0;
 }
 
 void UPicoSpatialAudioSceneGeometryComponent::BakeMesh()
@@ -208,7 +257,7 @@ void UPicoSpatialAudioSceneGeometryComponent::BakeMesh()
 
 	//	2. Batch UStaticMesh into one vertices and indices buffer;
 	//	2.1 count gathered vertices and indices
-	BatchStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, GetOwner()->GetTransform(),
+	BatchStaticMeshes(GatheredStaticMeshes, GatheredStaticMeshTransforms, GetComponentTransform(),
 	                  BatchedBakedMeshVerticesBuffer,
 	                  BatchedBakedMeshIndicesBuffer);
 
@@ -434,4 +483,45 @@ void UPicoSpatialAudioSceneGeometryComponent::BatchStaticMeshes(const TArray<USt
 		BatchedIndicesOffset += TempIndicesBuffer.Num();
 		BatchedIndicesStart += VertexCount;
 	}
+}
+
+int32 UPicoSpatialAudioSceneGeometryComponent::SubmitToContextInternal(
+	const TArray<float>& Vertices, const TArray<int32>& Indices, const FString& MeshType, int* GeomIdOut)
+{
+	if (Vertices.Num() > 0 && Indices.Num() > 0)
+	{
+		MeshConfig.enabled = true;
+		MeshConfig.material_type = static_cast<PxrAudioSpatializer_AcousticsMaterial>(MaterialSettings->MaterialPreset);
+		MeshConfig.absorption[0] = MaterialSettings->AbsorptionBand0;
+		MeshConfig.absorption[1] = MaterialSettings->AbsorptionBand1;
+		MeshConfig.absorption[2] = MaterialSettings->AbsorptionBand2;
+		MeshConfig.absorption[3] = MaterialSettings->AbsorptionBand3;
+		MeshConfig.scattering = MaterialSettings->Scattering;
+		MeshConfig.transmission = MaterialSettings->Transmission;
+		Pxr_Audio::Spatializer::ConvertToPicoSpatialAudioCoordinates(GetComponentTransform(),
+																	 MeshConfig.to_world_transform);
+		const auto Result = Pxr_Audio::Spatializer::FContextSingleton::GetInstance()->SubmitMeshWithConfig(
+			Vertices.GetData(), Vertices.Num() / 3,
+			Indices.GetData(), Indices.Num() / 3, &MeshConfig, GeomIdOut);
+
+		if (Result == PASP_SUCCESS)
+		{
+			UE_LOG(LogPicoSpatialAudio, Display, TEXT("Submit %s of %d triangles for Actor: %s. Geometry ID: %d"), *MeshType,
+			       Indices.Num() / 3, *GetOwner()->GetName(), *GeomIdOut);
+		}
+		else
+		{
+			UE_LOG(LogPicoSpatialAudio, Error, TEXT("Failed to submit %s for Actor: %s"), *MeshType,
+				   *GetOwner()->GetName());
+		}
+
+		Pxr_Audio::Spatializer::FListener::bNeedSceneCommit = true;
+		return Indices.Num() / 3;
+	}
+
+
+	UE_LOG(LogPicoSpatialAudio, Warning, TEXT("Skip submit %s for Actor: %s, since Vertices.Num() == %d, Indices.Num() == %d"), *MeshType,
+		*GetOwner()->GetName(), Vertices.Num(), Indices.Num());
+
+	return 0;
 }

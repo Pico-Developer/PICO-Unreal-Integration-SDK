@@ -596,7 +596,7 @@ enum class EShareMediaType : uint8
 UENUM(BlueprintType)
 enum class EShareAppTyp : uint8
 {
-    Douyin, /**< Douyin */
+    Douyin, /**< SocialMedia */
     None /**< None */
 };
 

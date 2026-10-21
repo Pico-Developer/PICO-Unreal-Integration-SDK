@@ -7,28 +7,24 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 <root xmlns:android="http://schemas.android.com/apk/res/android">
 	<init>
         <log text="PICOEnterprise init"/>
-        <log text="PICOEnterprise SDK Version = UE_3.3.2"/>
+        <log text="PICOEnterprise SDK Version = UE_6.0.0"/>
     </init>
 	
 	<androidManifestUpdates>
 		<addElements tag="application">
-			<meta-data android:name="pvr.tobsdk.version" android:value="UE_3.3.2" />
+			<meta-data android:name="pvr.tobsdk.version" android:value="UE_6.0.0" />
 			<meta-data android:name="pico_advance_interface" android:value="0"/>
 		</addElements>
 		<addPermission android:name="android.permission.CAMERA"/>
 	</androidManifestUpdates>
 
 	<resourceCopies>
-		<copyFile src="$S(PluginDir)/../../Libs/BAuthLib-1.0.0.jar"
-				  dst="$S(BuildDir)/libs/BAuthLib-1.0.0.jar" />
-		<copyFile src="$S(PluginDir)/../../Libs/CameraRenderingPlugin.jar"
-				  dst="$S(BuildDir)/libs/CameraRenderingPlugin.jar" />
-		<copyFile src="$S(PluginDir)/../../Libs/capturelib-0.0.7.jar"
-				  dst="$S(BuildDir)/libs/capturelib-0.0.7.jar" />
-		<copyFile src="$S(PluginDir)/../../Libs/arm64-v8a/libCameraRenderingPlugin.so"
-				  dst="$S(BuildDir)/libs/arm64-v8a/libCameraRenderingPlugin.so" />
-		<copyFile src="$S(PluginDir)/../../Libs/arm64-v8a/libpvrcapturelib.so"
-				  dst="$S(BuildDir)/libs/arm64-v8a/libpvrcapturelib.so" />
+		<copyFile src="$S(PluginDir)/../../Libs/CameraRenderingPlugin.aar"
+				  dst="$S(BuildDir)/libs/CameraRenderingPlugin.aar" />
+		<copyFile src="$S(PluginDir)/../../Libs/capturelib-release.aar"
+				  dst="$S(BuildDir)/libs/capturelib-release.aar" />
+		<copyFile src="$S(PluginDir)/../../Libs/tobservicelib-4.3.20.aar"
+				  dst="$S(BuildDir)/libs/tobservicelib-4.3.20.aar" />
 	</resourceCopies>
 	
 	<baseBuildGradleAdditions>
@@ -50,6 +46,8 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 	
 	<buildGradleAdditions>
         <insert>
+def picoEnterpriseLibsDir = file('src/main/libs').exists() ? file('src/main/libs') : file('../../app/src/main/libs')
+
 android {
     compileOptions {
         sourceCompatibility 1.8
@@ -57,17 +55,11 @@ android {
     }
 }
 repositories {
-	flatDir { dirs '/src/main/libs/' }
-}
-buildscript {
-    repositories {
-	    maven { url 'https://artifacts-cn-beijing.volces.com/repository/picoxrtob/' }
-    }
+	flatDir { dirs picoEnterpriseLibsDir }
 }
 
 allprojects {
     repositories {
-	    maven { url 'https://artifacts-cn-beijing.volces.com/repository/picoxrtob/' }
 		maven { url 'https://maven.aliyun.com/repository/google' }
 		maven { url 'https://maven.aliyun.com/repository/jcenter' }
  		google()
@@ -76,7 +68,9 @@ allprojects {
 }
 
 dependencies {
-	implementation 'com.picoxr.tobservice:tobservicelib:4.3.20'
+	implementation files("${picoEnterpriseLibsDir}/CameraRenderingPlugin.aar")
+	implementation files("${picoEnterpriseLibsDir}/capturelib-release.aar")
+	implementation files("${picoEnterpriseLibsDir}/tobservicelib-4.3.20.aar")
 	implementation 'com.google.code.gson:gson:2.8.6'
 }
 		</insert>
@@ -125,7 +119,6 @@ import com.pvr.tobservice.enums.PBS_ControllerPairTimeEnum;
 import com.pvr.tobservice.enums.PBS_ScreencastAudioOutputEnum;
 import com.pvr.tobservice.enums.PBS_CustomizeSettingsTabEnum;
 
-import com.pvr.tobauthlib.AuthCheckServer;
 import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.pm.PackageManager;
@@ -2421,12 +2414,6 @@ void ImportMapByPath(String MapPath, int ext)
 	{
 	    Log.debug("ImportMapByPath: not bind ToBService");
 	}
-}
-
-String GetToken()
-{
-	String Token = AuthCheckServer.featureAuthByToken(this, "getCameraInfo");
-	return Token;
 }
 
 public native void JavaToCSetWifiP2PDeviceNameCallback(int Result);

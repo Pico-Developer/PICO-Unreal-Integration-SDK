@@ -3,6 +3,9 @@
 
 #include "PXR_AppLog.h"
 #include "applogrs.hpp"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
 
 //Todo:Unreal app id
 FString PXR_AppLog::StrAppID = "793022";

@@ -3,13 +3,9 @@
 #pragma once
 
 #include "PICO_IMovementModule.h"
-#include "PICO_FaceTracking.h"
-#include "PICO_BodyTracking.h"
 #include "ILiveLinkSource.h"
 #include "PICO_LiveLinkSource.h"
-#include "PICO_MotionTracking.h"
-#include "PICO_EyeTracking.h"
-#include "PICO_ExpandDevice.h"
+#include "PICO_MovementExtension.h"
 
 class FPICOOpenXRMovementModule : public IPICOOpenXRMovementModule
 {
@@ -19,11 +15,11 @@ public:
 		return FModuleManager::LoadModuleChecked<FPICOOpenXRMovementModule>("PICOOpenXRMovement");
 	}
 
-	FFaceTrackingPICO& GetFaceTrackingPICOExtension() { return FaceTrackingPICOExtension; }
-	FBodyTrackingPICO& GetBodyTrackingPICOExtension() { return BodyTrackingPICOExtension; }
-	FMotionTrackingPICO& GetMotionTrackingPICOExtension() { return MotionTrackingPICOExtension; }
-	FEyeTrackingPICO& GetEyeTrackingPICOExtension() { return EyeTrackingPICOExtension; }
-	FExpandDevicePICO& GetFExpandDevicePICOExtension() { return ExpandDeviceExtension; }
+	FFaceTrackingPICO& GetFaceTrackingPICOExtension() { return MovementExtension.GetFaceTrackingPICO(); }
+	FBodyTrackingPICO& GetBodyTrackingPICOExtension() { return MovementExtension.GetBodyTrackingPICO(); }
+	FMotionTrackingPICO& GetMotionTrackingPICOExtension() { return MovementExtension.GetMotionTrackingPICO(); }
+	FEyeTrackingPICO& GetEyeTrackingPICOExtension() { return MovementExtension.GetEyeTrackingPICO(); }
+	FExpandDevicePICO& GetFExpandDevicePICOExtension() { return MovementExtension.GetExpandDevicePICO(); }
 
 	virtual void StartupModule() override;
 
@@ -39,9 +35,5 @@ private:
 	TSharedPtr<PICOLiveLink::LiveLinkSource> MovementSource{ nullptr };
 
 public:
-	FFaceTrackingPICO FaceTrackingPICOExtension;
-	FBodyTrackingPICO BodyTrackingPICOExtension;
-	FMotionTrackingPICO MotionTrackingPICOExtension;
-	FEyeTrackingPICO EyeTrackingPICOExtension;
-	FExpandDevicePICO ExpandDeviceExtension;
+	FMovementExtensionPICO MovementExtension;
 };

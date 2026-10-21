@@ -25,7 +25,10 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
  	<setBoolFromProperty result="bEnableCloudAnchor" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bEnableCloudAnchor" default="false"/>
     <setBoolFromProperty result="bEnableSceneCapture" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bEnableSceneCapture" default="false"/>
     <setBoolFromProperty result="bEnableMesh" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bEnableMesh" default="false"/>
-    </init>
+	<setBoolFromProperty result="bEnableEnvironmentDepth" ini="Engine" section="/Script/Engine.RendererSettings" property="r.XRSoftOcclusionsPermutation" default="false"/>
+	<setBoolFromProperty result="bEnablePlane" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bEnablePlane" default="false"/>
+    <setBoolFromProperty result="bLightEstimation" ini="Engine" section="/Script/PICOXRHMD.PICOXRSettings" property="bLightEstimation" default="false"/>
+</init>
 
 	<!-- optional updates applied to AndroidManifest.xml -->
 	<androidManifestUpdates>
@@ -54,10 +57,10 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
     <addAttribute tag="activity"  name="android:hardwareAccelerated" value="false" />
     <addElements tag="application">
       <meta-data android:name="pvr.app.type" android:value="vr" />
-	  <meta-data android:name="pvr.sdk.version" android:value="UE5_3.3.2" />
+	  <meta-data android:name="pvr.sdk.version" android:value="UE5_6.0.0" />
       <meta-data android:name="pxr.sdk.2dloading.flag" android:value="system" />
-      <meta-data android:name="pxr.sdk.version_code" android:value="5140" />
-      <meta-data android:name="pxr.sdk.sdk_generation" android:value="3" />
+      <meta-data android:name="pxr.sdk.version_code" android:value="6000" />
+      <meta-data android:name="pxr.sdk.generation" android:value="4" />
     </addElements>
 		
     <!-- Add MR Flag -->
@@ -75,6 +78,27 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
                         <true>
                             <addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
                         </true>
+                        <false>
+                            <if condition="bEnablePlane">
+                                <true>
+                                    <addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
+                                </true>
+                                <false>
+                                    <if condition="bLightEstimation">
+                                        <true>
+                                            <addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
+                                        </true>
+										<false>
+											<if condition="bEnableEnvironmentDepth">
+												<true>
+													<addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
+												</true>
+											</if>
+										</false>
+                                    </if>
+                                </false>
+                            </if>
+                        </false>
                     </if>
                 </false>
             </if>
@@ -162,6 +186,42 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
             </addElements>
         </false>
     </if>
+    <if condition="bEnablePlane">
+        <true>
+            <addElements tag="application">
+                <meta-data android:name="enable_plane_anchor" android:value="1" />
+            </addElements>
+        </true>
+        <false>
+            <addElements tag="application">
+                <meta-data android:name="enable_plane_anchor" android:value="0" />
+            </addElements>
+        </false>
+    </if>
+    <if condition="bLightEstimation">
+        <true>
+            <addElements tag="application">
+                <meta-data android:name="enable_light_estimation" android:value="1" />
+            </addElements>
+        </true>
+        <false>
+            <addElements tag="application">
+                <meta-data android:name="enable_light_estimation" android:value="0" />
+            </addElements>
+        </false>
+    </if>
+	<if condition="bEnableEnvironmentDepth">
+		<true>
+			<addElements tag="application">
+				<meta-data android:name="enable_environment_depth" android:value="1" />
+			</addElements>
+		</true>
+		<false>
+			<addElements tag="application">
+				<meta-data android:name="enable_environment_depth" android:value="0" />
+			</addElements>
+		</false>
+	</if>
     <!-- Add MR Flag -->
 
 	<if condition="bUsingOSSplash">
@@ -243,6 +303,12 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
         </false>
     </if>
       <!-- Add ET FT Flag -->
+        <if condition="bEnableEyeTrackingFoveationRendering">
+            <true>
+                <addPermission android:name="com.pico.xrpermission.ETFR"/>
+            </true>
+        </if>
+        <setBool result="bEnableEyeTrackingPermission" value="false"/>
 		<setBool result="bEnableEyeTrackingPermission" value="false"/>
 		<setBoolOr result="bEnableEyeTrackingPermission" arg1="$B(bEnableEyeTrackingPermission)" arg2="$B(bEnableEyeTracking)"/>
 		<setBoolOr result="bEnableEyeTrackingPermission" arg1="$B(bEnableEyeTrackingPermission)" arg2="$B(bEnableEyeTrackingFoveationRendering)"/>
@@ -307,11 +373,6 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
 
 	<!-- optional files or directories to copy to Intermediate/Android/APK -->
 	<resourceCopies>
-    <isArch arch="armeabi-v7a">
-      <copyFile src="$S(PluginDir)/../ThirdParty/PXRPlugin/PXRPlugin/Lib/armeabi-v7a/libpxr_api.so"
-         dst="$S(BuildDir)/libs/armeabi-v7a/libpxr_api.so" />
-	</isArch>
-   
     <isArch arch="arm64-v8a">
       <copyFile src="$S(PluginDir)/../ThirdParty/PXRPlugin/PXRPlugin/Lib/arm64-v8a/libpxr_api.so"
          dst="$S(BuildDir)/libs/arm64-v8a/libpxr_api.so" />
@@ -319,10 +380,7 @@ Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved.
         
     <copyFile src="$S(PluginDir)/../ThirdParty/PXRPlugin/PXRPlugin/ExtLibs/libpxr_api.jar"
          dst="$S(BuildDir)/libs/libpxr_plugin.jar" />
-    
-    <copyFile src="$S(PluginDir)/../ThirdParty/PXRPlugin/PXRPlugin/ExtLibs/pvrjar.jar"
-           dst="$S(BuildDir)/libs/pvrjar.jar" />
-    
+        
     <copyFile src="$S(BuildDir)/../../../pico_splash.png" dst="$S(BuildDir)/assets/pico_splash.png" />
 	
 	</resourceCopies>

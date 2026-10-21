@@ -29,9 +29,6 @@ enum class EHandController : uint8
 	RightPoke
 };
 
-/**
-  * OpenXR ViveTracker
-  */
 class FPICOOpenXRHandInteraction :
 	public IOpenXRExtensionPlugin,
 	public IInputDevice,
@@ -73,7 +70,7 @@ public:
 
 public:
 	FPICOOpenXRHandInteraction(const TSharedRef<FGenericApplicationMessageHandler>& InMessageHandler);
-	virtual ~FPICOOpenXRHandInteraction();
+	virtual ~FPICOOpenXRHandInteraction() override;
 
 	/** IOpenXRExtensionPlugin */
 	virtual FString GetDisplayName() override
@@ -82,6 +79,7 @@ public:
 	}
 	virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
 	virtual void PostCreateInstance(XrInstance InInstance) override;
+	virtual const void* OnCreateSession(XrInstance InInstance, XrSystemId InSystem, const void* InNext) override;
 	virtual void OnDestroySession(XrSession InSession) override;
 	virtual void AttachActionSets(TSet<XrActionSet>& OutActionSets) override;
 	virtual void GetActiveActionSetsForSync(TArray<XrActiveActionSet>& OutActiveSets) override;
@@ -114,6 +112,7 @@ private:
 	XrPath GetRolePathForMotionSource(FName MotionSource) const;
 
 	bool bActionsAttached = false;
+	bool bSupportHandInteractionLeftRight = false;
 
 	class IXRTrackingSystem* XRTrackingSystem = nullptr;
 	class IOpenXRHMD* OpenXRHMD = nullptr;

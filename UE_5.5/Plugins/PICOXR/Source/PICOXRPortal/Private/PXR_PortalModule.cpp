@@ -7,6 +7,7 @@
 #include "UI/PXR_VerificationStyle.h"
 #include "PXR_AppLog.h"
 #include "Interfaces/IPluginManager.h"
+#include "Settings/LevelEditorPlaySettings.h"
 
 #define LOCTEXT_NAMESPACE "PICOXRPortalModule"
 void FPICOXRPortalModule::StartupModule()

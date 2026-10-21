@@ -981,7 +981,7 @@ public:
     UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"), Category = "OnlinePico|Presence")
     static bool LaunchInvitePanel(UObject* WorldContextObject, FOnlineManagerLaunchInvitePanelDelegate InLaunchInvitePanelDelegate);
 
-    /// <summary>Share videos or pictures to different platforms, currently only support sharing to Douyin apps.
+    /// <summary>Share videos or pictures to different platforms, currently only support sharing to SocialMedia apps.
     /// @note Video file requirements:
     /// For a better viewing experience, it is recommended to upload a 16:9 vertical video with a resolution of 720p(1280x720) and above
     /// Support common video formats, mp4 and webm are recommended
@@ -1001,7 +1001,7 @@ public:
     /// <param name="InVideoThumbPath">The path of the video cover or the first few frames of the video as the video thumb.</param> 
     /// <param name="InImagePaths">The array of image paths.</param> 
     /// <param name="InShareType">The share type:
-    /// * `0`: Douyin
+    /// * `0`: SocialMedia
     /// * `1`: None
     /// </param>
     /// <param name="InShareMediaDelegate">Will be executed when the request has been completed(bool, IsSuccessed, FString, ErrorMessage).</param>

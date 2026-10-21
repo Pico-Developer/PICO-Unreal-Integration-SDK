@@ -161,7 +161,7 @@ public:
 	virtual	bool GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrientation, FVector& OutPosition, FXRSensorProperties& OutSensorProperties) override;
 	virtual void SetTrackingOrigin(EHMDTrackingOrigin::Type NewOrigin) override;
 	virtual EHMDTrackingOrigin::Type GetTrackingOrigin() const override;
-	virtual bool DoesSupportPositionalTracking() const override;
+	virtual bool DoesSupportPositionalTracking() const override { return true; }
 	virtual bool IsHeadTrackingAllowed() const override;
 	
 	/** FHMDSceneViewExtension interface */
@@ -402,6 +402,7 @@ private:
 	FIntPoint IdealRenderTargetSize;
 	FPICOXRFrustum LeftFrustum;
 	FPICOXRFrustum RightFrustum;
+	FPICOXRFrustum BothFrustum;
 	TRefCountPtr<FPICOXRRenderBridge> RenderBridge;
 	class UPICOXRSettings* PICOXRSetting;
 	FString RHIString;

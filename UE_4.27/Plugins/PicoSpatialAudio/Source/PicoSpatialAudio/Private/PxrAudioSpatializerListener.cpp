@@ -45,9 +45,9 @@ namespace Pxr_Audio
 			const size_t FramesPerBuffer = static_cast<size_t>(AudioDevice->GetBufferLength());
 			const int SampleRate = static_cast<int>(AudioDevice->GetSampleRate());
 
-			PxrAudioSpatializer_RenderingMode RenderingModeInternal = ConvertToInternalRenderingMode(
-				GetDefault<UPicoSpatialAudioSettings>()->RenderingMode);
-			auto Result = FContextSingleton::Init(RenderingModeInternal, FramesPerBuffer, SampleRate);
+			PxrAudioSpatializer_RenderingQuality RenderingQualityInternal = ConvertToInternalRenderingMode(
+				GetDefault<UPicoSpatialAudioSettings>()->RenderingQuality);
+			auto Result = FContextSingleton::Init(RenderingQualityInternal, FramesPerBuffer, SampleRate);
 
 			if (Result != PASP_SUCCESS)
 			{
@@ -59,7 +59,7 @@ namespace Pxr_Audio
 			{
 				UE_LOG(LogPicoSpatialAudio, Display,
 				       TEXT("Context is initialized, Quality = %s"),
-				       *(UEnum::GetDisplayValueAsText(GetDefault<UPicoSpatialAudioSettings>()->RenderingMode).ToString()
+				       *(UEnum::GetDisplayValueAsText(GetDefault<UPicoSpatialAudioSettings>()->RenderingQuality).ToString()
 				       ));
 				check(AudioDevice);
 				OwningAudioDevice = AudioDevice;

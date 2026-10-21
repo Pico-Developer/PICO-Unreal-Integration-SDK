@@ -257,6 +257,30 @@ public:
 	static bool PXR_CloseSceneCaptureService();
 
 	/// <summary>
+	/// Closes Spatial Plane scanning..
+	/// </summary>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	static bool PXR_CloseSpatialPlaneScanning();
+
+	/// <summary>
+	/// Closes Spatial Light Estimation..
+	/// </summary>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	static bool PXR_CloseLightEstimationService();
+	
+	/// <summary>
 	///  Creates Scene Bounding Polygon.
 	/// </summary>
 	/// <param name="BoundActor">Specifies the actor bound by polygon.</param>
@@ -346,6 +370,28 @@ public:
     /// </returns>	
 	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
 	static EPICOMRState PXR_GetSceneCaptureServiceState();
+	
+	/// <summary>
+	/// Get Spatial Plane scanning state.
+	/// </summary>
+	/// <returns>State of Spatial Plane scanning:
+	///	- Initialized: After checking the Spatial Plane feature in ProjectSettings, the initialization will be completed during the app startup process.
+	///	- Running: This state is set after the Spatial Plane scanning has been successfully started.
+	///	- Stopped: This state is set after the Spatial Plane scanning has been successfully shut down.
+	/// </returns>	
+	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
+	static EPICOMRState PXR_GetSpatialPlaneScanningState();
+
+	/// <summary>
+	/// Get Light Estimation service state.
+	/// </summary>
+	/// <returns>State of Light Estimation service:
+	///	- Initialized: After checking the Light Estimation feature in ProjectSettings, the initialization will be completed during the app startup process.
+	///	- Running: This state is set after the Light Estimation service has been successfully started.
+	///	- Stopped: This state is set after the Light Estimation service has been successfully shut down.
+	/// </returns>	
+	UFUNCTION(BlueprintPure, Category = "PXR|PXRMR")
+	static EPICOMRState PXR_GetLightEstimationServiceState();
 
 	/// <summary>
 	/// Reset Spatial Mesh Infos State.

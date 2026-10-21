@@ -80,7 +80,12 @@ void FPICOXRHMDModule::StartupModule()
 			IModularFeatures::Get().UnregisterModularFeature(IStereoLayersFlagsSupplier::GetModularFeatureName(), StereoLayersFlagsSupplier.Get());
 		}
 	}
-	
+
+	// Set VRSFormat to 3 for FDM
+	if (IConsoleVariable* VRSFormatCVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Vulkan.VRSFormat")))
+	{
+		VRSFormatCVar->Set(3, ECVF_SetByPluginHighPriority);
+	}
 }
 
 void FPICOXRHMDModule::ShutdownModule()

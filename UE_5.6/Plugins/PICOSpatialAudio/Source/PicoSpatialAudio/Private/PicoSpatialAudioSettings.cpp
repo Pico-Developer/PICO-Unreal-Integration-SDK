@@ -4,6 +4,6 @@
 #include "PicoSpatialAudioSettings.h"
 
 UPicoSpatialAudioSettings::UPicoSpatialAudioSettings()
-	: RenderingMode(EPxrAudioSpatializer_RenderingMode::Medium_Quality)
+	: RenderingQuality(EPxrAudioSpatializer_RenderingQuality::Medium_Quality)
 {
 }

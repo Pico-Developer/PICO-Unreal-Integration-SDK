@@ -814,6 +814,9 @@ public:
 	/// <li>WLAN_MAC_ADDRESS: Mac address of WLAN</li>
 	/// <li>DEVICE_IP: Device IP</li>
 	/// <li>CHARGING_STATUS: Charging status (2-charged; 3-uncharged)</li>
+	/// <li>CURRENT_CHARGING_PROTOCOL`: the charging protocol</li>
+    /// <li>USB_PWOER_MAX`: the maximum charging power</li>
+    /// <li>HMD_POSITION_AND_ORIENTATION`: the position and orientation of the HMD</li>
 	/// </ul>
 	/// </param>
 	/// <returns>FString: The requested type of device information.</returns>
@@ -1043,63 +1046,70 @@ public:
 	/// <summary>Switches a specified system function on/off.</summary>
 	/// <param name="SystemFunction">(In) Enum (ESystemFunctionSwitchEnum), the system function to switch on/off. Possible values include:
 	/// <ul>
-	/// <li>`SFS_USB` - "USB Debug": USB debugging switch</li>
-	/// <li>`SFS_AUTOSLEEP` - "Auto Sleep": Auto sleep switch</li>
-	/// <li>`SFS_SCREENON_CHARGING` - "ScreenOn Charging": Screen-on charging switch</li>
-	/// <li>`SFS_OTG_CHARGING` - "OTG Charging": OTG charging switch</li>
-	/// <li>`SFS_RETURN_MENU_IN_2DMODE` - "Show Back Menu in 2D mode": Show Back Menu in 2D mode switch</li>
-	/// <li>`SFS_COMBINATION_KEY` - "Combination Key": Combination key switch</li>
-	/// <li>`SFS_CALIBRATION_WITH_POWER_ON` - "Calibration with power on": Calibration with power on switch</li>
-	/// <li>`SFS_SYSTEM_UPDATE` - "System Update": System update switch</li>
-	/// <li>`SFS_CAST_SERVICE` - "Cast Service": Cast service switch. This property does not take effect when the industry solution switch is on.</li>
-	/// <li>`SFS_EYE_PROTECTION` - "Eye Protection": Eye protection switch</li>
-	/// <li>`SFS_SECURITY_ZONE_PERMANENTLY` - "Security Zone Permanently": Security zone permanently on/off switch</li>
-	/// <li>`SFS_Auto_Calibration` - "Auto Calibration": Auto calibration switch</li>
-	/// <li>`SFS_USB_BOOT` - "USB Boot": USB Boot switch</li>
-	/// <li>`SFS_VOLUME_UI` - "Volume UI": global volume UI</li>
-	/// <li>`SFS_CONTROLLER_UI` - "Controller UI": Global controller connected UI</li>
-	/// <li>`SFS_NAVGATION_SWITCH` - "Navigation Switch": Navigation bar</li>
-	/// <li>`SFS_SHORTCUT_SHOW_RECORD_UI` - "Shortcut Show Record UI": Screen recording button UI</li>
-	/// <li>`SFS_SHORTCUT_SHOW_FIT_UI` - "Shortcut Show Fit UI": PICO fit UI</li>
-	/// <li>`SFS_SHORTCUT_SHOW_CAST_UI` - "Shortcut Show Cast UI": Screencast button UI</li>
-	/// <li>`SFS_SHORTCUT_SHOW_CAPTURE_UI` - "Shortcut Show Capture UI": Screenshot button UI</li>
-	/// <li>`SFS_USB_FORCE_HOST` - "USB Force Host": Set the Neo3 device as the host device</li>
-	/// <li>`SFS_SET_DEFAULT_SAFETY_ZONE` - "Set Default Safety Zone": Set a default play area for a Neo3 device</li>
-	/// <li>`SFS_ALLOW_RESET_BOUNDARY` - "Allow Reset Boundary": Allow to reset customized boundary</li>
-	/// <li>`SFS_BOUNDARY_CONFIRMATION_SCREEN` - "Boundary Confirmation Screen": Whether to display the boundary confirmation screen</li>
-	/// <li>`SFS_LONG_PRESS_HOME_TO_RECENTER` - "Long Press Home to Recenter": Long press the Home key to recenter</li>
-	/// <li>`SFS_POWER_CTRL_WIFI_ENABLE` - "Power Ctrl Wifi Enable": Neo3 device stays connected to the network when the device sleeps/turns off</li>
-	/// <li>`SFS_WIFI_DISABLE` - "Wifi Disable": Disable Wi-Fi for Neo3 device</li>
-	/// <li>`SFS_SIX_DOF_SWITCH` - "Six DOF Switch": 6DoF position tracking</li>
-	/// <li>`SFS_INVERSE_DISPERSION` - "Inverse Dispersion": Anti-dispersion</li>
-	/// <li>`SFS_LOGCAT` - "Logcat": Log switch (log directory: /data/logs)</li>
-	/// <li>`SFS_PSENSOR` - "PSensor": PSensor switch</li>
-	/// <li>`SFS_SYSTEM_UPDATE_OTA` - "System Update OTA": OTA system update switch</li>
-	/// <li>`SFS_SYSTEM_UPDATE_APP` - "System Update App": App system update switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_WLAN_UI` - "Shortcut Show Wlan UI": WLAN shortcut UI switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_BOUNDARY_UI` - "Shortcut Show Boundary UI": Boundary UI shortcut switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_BLUETOOTH_UI` - "Shortcut Show Bluetooth UI": Bluetooth UI shortcut switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_CLEAN_TASK_UI` - "Shortcut Show Clean Task UI": Clean Task UI shortcut switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_IPD_ADJUSTMENT_UI` - "Shortcut Show IPD Adjustment UI": IPD Adjustment UI shortcut switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_POWER_UI` - "Shortcut Show Power UI": Power UI shortcut switch</li>
-	/// <li>`SFS_SHORTCUT_SHOW_EDIT_UI` - "Shortcut Show Edit UI": Edit UI shortcut switch</li>
-	/// <li>`SFS_BASIC_SETTING_APP_LIBRARY_UI` - "Basic Setting App Library UI": App Library UI in Basic Settings switch</li>
-	/// <li>`SFS_BASIC_SETTING_SHORTCUT_UI` - "Basic Setting Shortcut UI": Shortcut UI in Basic Settings switch</li>
-	/// <li>`SFS_LED_FLASHING_WHEN_SCREEN_OFF` - "LED Flashing When Screen Off": LED flash when screen is off switch</li>
-	/// <li>`SFS_BASIC_SETTING_CUSTOMIZE_SETTING_UI`: customize settings item to show or hide in basic settings
-	/// <li>`SFS_BASIC_SETTING_SHOW_APP_QUIT_CONFIRM_DIALOG`: whether to show the app-quit dialog box when switching to a new app
-	/// <li>`SFS_BASIC_SETTING_KILL_BACKGROUND_VR_APP`: whether to kill background VR apps (`1`: kill, and this is the default setting; `2`: do not kill)
-	/// <li>`SFS_BASIC_SETTING_SHOW_CAST_NOTIFICATION`: whether to show a blue icon when casting the screen. The icon is displayed by default, and you can set the value to `0` to hide it.
-	/// <li>`SFS_AUTOMATIC_IPD`: auto IPD switch (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.7.0 or later)
-	/// <li>`SFS_QUICK_SEETHROUGH_MODE`: quick seethrough mode switch (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.7.0 or later)
-	/// <li>`SFS_HIGN_REFERSH_MODE`: high refresh mode switch (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.7.0 or later)
-	/// <li> `SFS_SEETHROUGH_APP_KEEP_RUNNING`: whether the application continues to run normally in see-through mode. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_OUTDOOR_TRACKING_ENHANCEMENT`: enhances tracking and positioning performance in outdoor environments. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_AUTOIPD_AUTO_COMFIRM`: enables an automatic IPD adjustment process that doesn't require manual intervention from the user. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_LAUNCH_AUTOIPD_IF_GLASSES_WEARED`: whether to automatically adjust IPD when glasses are worn. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_GESTURE_RECOGNITION_HOME_ENABLE`: whether to enable gesture recognition for the home function on or off. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_GESTURE_RECOGNITION_RESET_ENABLE`: whether to enable gesture recognition for the reset function on or off. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
-	/// <li> `SFS_AUTO_COPY_FILES_FROM_USB_DEVICE`: whether to automatically import resources from an OTG (On-The-Go) USB device. (supported by PICO Neo3 series and PICO 4 Enterprise with system version 5.8.0 or later)
+	/// <li>`USB Debug`</li>
+	/// <li>`Auto Sleep`</li>
+	/// <li>`ScreenOn Charging`</li>
+	/// <li>`OTG Charging`</li>
+	/// <li>`Show Back Menu in 2D Mode`</li>
+	/// <li>`Combination Key`</li>
+	/// <li>`Calibration with power on`</li>
+	/// <li>`System Update`</li>
+	/// <li>`Cast Service`</li>
+	/// <li>`Eye Protection`</li>
+	/// <li>`Security Zone Permantly`</li>
+	/// <li>`Global Calibration`</li>
+	/// <li>`Auto Calibration`</li>
+	/// <li>`USB Boot`</li>
+	/// <li>`Volume Global UI Prompt Switch`</li>
+	/// <li>`Controller Connection Global UI Prompt Switch`</li>
+	/// <li>`Open/Close the Navigation`</li>
+	/// <li>`Show Record UI`</li>
+	/// <li>`Show Fit UI`</li>
+	/// <li>`Show Cast UI`</li>
+	/// <li>`Show Capture UI`</li>
+	/// <li>`Stop Mem Infor Service`</li>
+	/// <li>`Start App Boot Completed`</li>
+	/// <li>`Usb Force Host`</li>
+	/// <li>`Set Default Safty Zone`</li>
+	/// <li>`Allow Reset Boundary`</li>
+	/// <li>`Boundary Confirmation Screen`</li>
+	/// <li>`Long Press Home For Recenter`</li>
+	/// <li>`Power Ctrl Wifi Enable`</li>
+	/// <li>`Wifi Disable`</li>
+	/// <li>`Six Dof Switch`</li>
+	/// <li>`Inverse Dispersion`</li>
+	/// <li>`Logcat`</li>
+	/// <li>`PSensor`</li>
+	/// <li>`System Update OTA`</li>
+	/// <li>`System Update App`</li>
+	/// <li>`Shortcut Show Wlan UI`</li>
+	/// <li>`Shortcut Show Boundary UI`</li>
+	/// <li>`Shortcut Show Bluetooth UI`</li>
+	/// <li>`Shortcut Show Clean Task UI`</li>
+	/// <li>`Shortcut Show IPD Adjustment UI`</li>
+	/// <li>`Shortcut Show Power UI`</li>
+	/// <li>`Shortcut Show Edit UI`</li>
+	/// <li>`Basic Setting App Library UI`</li>
+	/// <li>`Basic Setting Shortcut UI`</li>
+	/// <li>`LED Flashing When Screen Off`</li>
+	/// <li>`Basic Setting Customize Setting UI`</li>
+	/// <li>`Basic Setting Show App Quit Confirm Dialog`</li>
+	/// <li>`Basic Setting Kill Background VR App`</li>
+	/// <li>`Basic Setting Show Cast Notification`</li>
+	/// <li>`Automatic IPD`</li>
+	/// <li>`Quick Seethrough Mode`</li>
+	/// <li>`High Refresh Mode`</li>
+	/// <li>`Seethrough App Keep Running`</li>
+	/// <li>`Outdoor Tracking Enhancement`</li>
+	/// <li>`Autoipd Auto Confirm`</li>
+	/// <li>`Launch Autoipd If Glasses Weared`</li>
+	/// <li>`Gesture Recognition Home Enable`</li>
+	/// <li>`Gesture Recognition Reset Enable`</li>
+	/// <li>`Auto Copy Files From USB Device`</li>
+	/// <li>`Controller Still`</li>
+	/// <li>`Shortcut Show Performance UI`</li>
+	/// <li>`Battery Status Display`</li>
+	/// <li>`Battery Status Display`/li>
 	/// </ul>
 	/// </param>
 	/// <param name="SwitchEnum">(In) Enum (ESwitchEnum), to switch the system function on/off. Possible values include:
@@ -1841,6 +1851,25 @@ public:
 	/// <li>`Shortcut Show Edit UI`</li>
 	/// <li>`Basic Setting App Library UI`</li>
 	/// <li>`Basic Setting Shortcut UI`</li>
+	/// <li>`LED Flashing When Screen Off`</li>
+	/// <li>`Basic Setting Customize Setting UI`</li>
+	/// <li>`Basic Setting Show App Quit Confirm Dialog`</li>
+	/// <li>`Basic Setting Kill Background VR App`</li>
+	/// <li>`Basic Setting Show Cast Notification`</li>
+	/// <li>`Automatic IPD`</li>
+	/// <li>`Quick Seethrough Mode`</li>
+	/// <li>`High Refresh Mode`</li>
+	/// <li> `Seethrough App Keep Running`</li>
+	/// <li> `Outdoor Tracking Enhancement`</li>
+	/// <li> `Autoipd Auto Confirm`</li>
+	/// <li> `Launch Autoipd If Glasses Weared`</li>
+	/// <li> `Gesture Recognition Home Enable`</li>
+	/// <li> `Gesture Recognition Reset Enable`</li>
+	/// <li> `Auto Copy Files From USB Device`</li>
+	/// <li> `Controller Still`</li>
+	/// <li> `Shortcut Show Performance UI`</li>
+	/// <li> `Battery Status Display`</li>
+	/// <li> `Battery Status Display`/li>
 	/// </ul>
 	/// </param>
 	/// <returns>None</returns>
@@ -2432,7 +2461,7 @@ public:
 	/// <summary>
 	/// Initializes the enterprise service. Must be called before calling other enterprise APIs.
 	/// </summary>
-	/// <param name="Token">(In) Authentication token from the See-Through service.</param>
+	/// <param name="Token">(Out) Reserved. Authentication is no longer required.</param>
 	/// <returns>Bool: Whether the enterprise service has been initialized:
 	/// <ul>
 	/// <li>`true` - success</li>
@@ -3781,6 +3810,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static void PE_UpdateRenderTargetFromYUVNV21(const TArray<uint8>& RawData, int32 Width, int32 Height, UTextureRenderTarget2D* RenderTarget2D, uint8 OverrideAlpha = 255);
 
+	/// <summary>Closes the camera.
+	/// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
+	/// <returns>
+	/// - `true`: success
+    /// - `false`: failure
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static bool PE_CloseCamera();
 
@@ -3788,64 +3824,182 @@ public:
 	static CameraFrame CameraFrameBuffer;
 	static TArray<uint8> CameraFrameBufferData;
 	static FPICOEnterpriseCameraBufferDelegate CapturelibCallBackDelegate;
-	/*
-	VALUE_TRUE = "1";
-	VALUE_FALSE = "0";
 
-	KEY_MCTF = "enable-mctf";
-	KEY_EIS = "enable-eis";
-	KEY_MFNR = "enable-mfnr";
-	KEY_ENABLE_MVHEVC = "enable-mvhevc";
-	KEY_OUTPUT_CAMERA_RAW_DATA = "output-camera-raw-data";
-	KEY_VIDEO_FPS = "video-fps";
-	*/
+	/// <summary>Opens the camera. After the camera is opened, you can use the APIs for retrieving camera data and more.
+    /// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
+	/// <param name="Mode">Specifies the image output mode by choosing one from the following:
+    /// - `0`: Output the image from the left-eye camera
+    /// - `1`: Output the image from the right-eye camera
+    /// - `2`: Stitch the images from the left-eye and right-eye cameras into one image and output this image
+    /// - `3`: Output the images from the left-eye and right-eye cameras interlacedly, and the interval is 1 nanosecond
+	// </param>
+	/// <param name="Width">Specifies the width of the frame buffer.</param>
+	/// <param name="Height">Specifies the height of the frame buffer.</param>
+	/// <param name="Options">Specifies config options as demonstrated by the following key-value pairs:
+	/// - `VALUE_TRUE = "1"`: For enabling an option.
+	/// - `VALUE_FALSE = "0"`: For disabling an option.
+	/// - `KEY_MCTF = "enable-mctf"`: Whether to enable MCTF. Enabling MCTF can reduce video noise, but it will increase power consumption.
+	/// - `KEY_EIS = "enable-eis"`: Whether to enable EIS. If the app does not require video recording, you can disable EIS to improve camera startup efficiency.
+	/// - `KEY_MFNR = "enable-mfnr"`: Whether to enable MFNR. If the app does not require taking photos, you can disable MFNR to save memory.
+	/// - `KEY_ENABLE_MVHEVC = "enable-mvhevc"`: Whether to enable recording videos in MV-HEVC.
+	/// - `KEY_OUTPUT_CAMERA_RAW_DATA = "output-camera-raw-data"`: Whether to enable the output of camera's raw image.
+    /// - `KEY_VIDEO_FPS = "video-fps"`: To set a frame rate for videos.
+	/// </param>
+	/// <param name="Callback">Asynchronously returns whether the camera is opened.
+    /// - `true`: opened
+    /// - `false`: not opened
+	/// After receiving the callback result, you can directly get the camera's buffer.
+	// </param>
+	/// <returns>
+	/// - `true`: success
+    /// - `false`: failure
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static bool PE_OpenCameraAsync(int Mode, int Width, int Height, const TMap<FString, FString>& Options, const FPICOEnterpriseCameraBufferDelegate& Callback);
 
+	/// <summary>Uses the default camera settings. The default frame rate is 60fps.
+    /// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static void PE_SetConfigureDefault();
 
+	/// <summary>Configures camera parameters.
+    /// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
+	/// <param name="enableMvHevc">Specifies whether to record videos in MV-HEVC.</param>
+	/// <param name="videoFps">Specifies the frame rate of videos. When the value specified is greater than `0`, that value will be used. When the value specified is smaller than or equal to `0`, the default 60fps will be used.</param>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static void PE_SetConfigure(bool enableMvHevc, int videoFps);
 
-	/*
-	VALUE_TRUE = "1";
-	VALUE_FALSE = "0";
-
-	KEY_MCTF = "enable-mctf";
-	KEY_EIS = "enable-eis";
-	KEY_MFNR = "enable-mfnr";
-	KEY_ENABLE_MVHEVC = "enable-mvhevc";
-	KEY_OUTPUT_CAMERA_RAW_DATA = "output-camera-raw-data";
-	KEY_VIDEO_FPS = "video-fps";
-	*/
+	/// <param name="Options">Specifies config options as demonstrated by the following key-value pairs:
+	/// - `VALUE_TRUE = "1"`: For enabling an option.
+	/// - `VALUE_FALSE = "0"`: For disabling an option.
+	/// - `KEY_MCTF = "enable-mctf"`: Whether to enable MCTF. Enabling MCTF can reduce video noise, but it will increase power consumption.
+	/// - `KEY_EIS = "enable-eis"`: Whether to enable EIS. If the app does not require video recording, you can disable EIS to improve camera startup efficiency.
+	/// - `KEY_MFNR = "enable-mfnr"`: Whether to enable MFNR. If the app does not require taking photos, you can disable MFNR to save memory.
+	/// - `KEY_ENABLE_MVHEVC = "enable-mvhevc"`: Whether to enable recording videos in MV-HEVC.
+	/// - `KEY_OUTPUT_CAMERA_RAW_DATA = "output-camera-raw-data"`: Whether to enable the output of camera's raw image.
+    /// - `KEY_VIDEO_FPS = "video-fps"`: To set a frame rate for videos.
+	/// </param>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static void PE_SetConfigureMap(const TMap<FString, FString>& Options);
 
+	/// <summary>Gets the extrinsic parameters for the camera.
+    /// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
+	/// <param name="leftCameraExtrinsics">Returns the position and rotation of the left-eye camera.</param>
+	/// <param name="rightCameraExtrinsics">Returns the position and rotation of the right-eye camera.</param>
+	/// <returns>
+	/// - `true`: success
+    /// - `false`: failure
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static bool PE_GetCameraExtrinsics(TArray<double>& leftCameraExtrinsics, TArray<double>& rightCameraExtrinsics);
 
+	/// <summary> Gets the values of the intrinsic parameters (cx, cy, fx, fy) for the camera. These values are calculated based on the width, height, horizontal FOV, and vertical FOV you specify.
+    /// @note Only supported by PICO 4 Ultra Enterprise.
+	/// </summary>
+	/// <param name="width">Specifies the width.</param>
+	/// <paran name="height">Specifies the height.</param>
+	/// <param name="h_fov">Specifies the horizontal FOV.</param>
+	/// <param name="v_fov"></param>
+	/// <param name="rateArray">Specifies the vertical FOV.</param>
+	/// <returns>
+	/// - `true`: success
+    /// - `false`: failure
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static bool PE_GetCameraIntrinsics(int width, int height, double h_fov, double v_fov, TArray<double>& rateArray);
-
+    
+	/// <summary>
+	/// Sets an app as the device owner app.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <param name="PackageName">Specifies the package name of the owner app.</param>
+	/// <param name="ClassName">Specifies the class name of the admin component.</param>
+	/// <returns>
+	/// - `0`: success
+	/// - `1`: failure
+	/// - `2`: permission verification failed
+	/// </returns>	
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static int PE_SetDeviceOwner(FString PackageName, FString ClassName);
 
+	/// <summary>
+	/// Gets the device owner app.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <returns>
+	/// Android component name object containing the app package name and class name. Returns null if no device owner is set.
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static FString PE_GetDeviceOwner();
 
+	/// <summary>
+	/// Sets a home page for the browser.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <param name="url">Specifies home page URL to set.</param>
+	/// <returns>
+	/// - `0`: success
+	/// - `1`: failure
+	/// - `-2`: not supported by the current device
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static int PE_SetBrowserHomePage(FString url);
 
+	/// <summary>
+	/// Gets the home page of the browser.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <returns>
+	/// The current home page URL of the browser. `null` indicates the default home page URL.
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static FString PE_GetBrowserHomePage();
 
+	/// <summary>
+	/// Sets the capability for the PICO Motion Tracker to automatically power on when plugged in.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <param name="enable">
+	/// - `true`: enable this capability
+	/// - `false`: disable this capability
+	/// </param>
+	/// <returns>
+	/// - `track1SN:track1Result,track2SN:track2Result,xxx` for success
+	/// - `1`: failure
+	/// - `-2`: not supported by the current device
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static FString PE_SetMotionTrackerAutoStart(int enable);
 
+	/// <summary>
+	/// Enables the device to automatically join a WiFi.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <param name="ssid">The SSID of the WiFi.</param>
+	/// <param name="password">The password of the WiFi.</param>
+	/// <param name="networkID">Specifies the ID of the network to join. Only valid when `WifiConfiguration` is null.</param>
+	/// <param name="allowAutoJoin">Sets whether to allow auto-join:
+	/// - `true`: allow
+	/// - `false`: not allow
+	/// </param>
+	/// <returns>
+	/// - `0`: success
+	/// - `1`: failure
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static int PE_AllowWifiAutoJoin(FString ssid, FString password, int networkID, bool allowAutoJoin);
-	
+
+	/// <summary>
+	/// Gets the bound information of the large space.
+	/// @note Only supported by PICO 4 Ultra with device system version 5.13.0 or later.
+	/// </summary>
+	/// <returns>
+	/// The bound information of the large space.
+	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|Enterprise")
 	static TArray<FString> PE_GetLargeSpaceBoundsInfoWithType();
 };

@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_SpatialMeshActor.h"
 
@@ -18,13 +18,17 @@
 #define UPDATE_FRAME_NUM_MAX 10
 
 
-ASpatialMeshActorPICO::ASpatialMeshActorPICO(const FObjectInitializer& ObjectInitializer)
+ASpatialMeshActorPICO::ASpatialMeshActorPICO(const FObjectInitializer& ObjectInitializer):Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	SpatialMeshMaterial=nullptr;
-
+	if (SpatialMeshMaterial==nullptr)
+	{
+		static ConstructorHelpers::FObjectFinder<UMaterial> DefaultMaterialFinder(TEXT("/Script/Engine.Material'/PICOOpenXR/Materials/M_Wireframe.M_Wireframe'"));
+		SpatialMeshMaterial= DefaultMaterialFinder.Object;
+	}
+	
 	for (ESemanticLabelPICO Val : TEnumRange<ESemanticLabelPICO>())
 	{
 		SemanticToColors.Emplace(Val, FColor::MakeRandomSeededColor(static_cast<int32>(Val)));
@@ -55,12 +59,6 @@ void ASpatialMeshActorPICO::HandleMeshDataUpdatedEvent()
 
 void ASpatialMeshActorPICO::Tick(float DeltaTime)
 {
-	if (bEnableDebugFunction)
-	{
-		NumDrawCalls = GNumDrawCallsRHI[0];
-		DrawnPrimitives = GNumPrimitivesDrawnRHI[0];
-	}
-
 	TArray<FSpatialMeshInfoPICO> MRMeshInfos;
 	MeshInfoQueue.Dequeue(MRMeshInfos);
 
@@ -74,11 +72,9 @@ void ASpatialMeshActorPICO::Tick(float DeltaTime)
 				USpatialMeshComponentPICO* SpatialMesh = NewObject<USpatialMeshComponentPICO>(this);
 				SpatialMesh->RegisterComponent();
 				SpatialMesh->SetMaterial(0,SpatialMeshMaterial);
-				SpatialMesh->SetUseWireframe(false);
 				SpatialMesh->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
 				SpatialMesh->SetVisibility(bSpatialMeshVisible);
 				SpatialMesh->SetCollisionEnabled(CollisionType);
-				SpatialMesh->SetEnableMeshOcclusion(true);
 				AddOwnedComponent(SpatialMesh);
 
 				if (EntityToMeshMap.Contains(MeshInfo.UUID))
@@ -119,9 +115,6 @@ void ASpatialMeshActorPICO::Tick(float DeltaTime)
 					EntityToMeshMap[MeshInfo.UUID]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					EntityToMeshMap[MeshInfo.UUID]->DestroyComponent();
 					EntityToMeshMap.Remove(MeshInfo.UUID);
-				}
-				else
-				{
 				}
 			}
 			break;
@@ -164,6 +157,7 @@ void ASpatialMeshActorPICO::HandleRequestSpatialMeshContentsEvent(EResultPICO Re
 
 void ASpatialMeshActorPICO::EndPlay(EEndPlayReason::Type Reason)
 {
+	Super::EndPlay(Reason);
 	ClearMesh();
 }
 
@@ -203,11 +197,6 @@ void ASpatialMeshActorPICO::SetMeshVisibility(bool visibility)
 	}
 }
 
-void ASpatialMeshActorPICO::EnableDebugFunction(bool bEnable)
-{
-	bEnableDebugFunction = bEnable;
-}
-
 bool ASpatialMeshActorPICO::ClearMesh()
 {
 	for (const auto Pair : EntityToMeshMap)
@@ -215,7 +204,6 @@ bool ASpatialMeshActorPICO::ClearMesh()
 		if (Pair.Value)
 		{
 			Pair.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			Pair.Value->Clear();
 			Pair.Value->DestroyComponent();
 		}
 	}
@@ -231,16 +219,6 @@ int32 ASpatialMeshActorPICO::GetMeshNum()
 	return EntityToMeshMap.Num();
 }
 
-int32 ASpatialMeshActorPICO::GetDrawsNum()
-{
-	return NumDrawCalls;
-}
-
-int32 ASpatialMeshActorPICO::GetDrawnPrimitives()
-{
-	return DrawnPrimitives;
-}
-
 FColor ASpatialMeshActorPICO::GetColorBySceneLabel(ESemanticLabelPICO SceneLabel)
 {
 	return SemanticToColors.Contains(SceneLabel)?SemanticToColors[SceneLabel]:FColor::MakeRandomSeededColor(static_cast<int32>(SceneLabel));
@@ -250,15 +228,19 @@ bool ASpatialMeshActorPICO::UpdateMeshByMeshInfo(USpatialMeshComponentPICO* Spat
 {
 	if (SpatialMesh)
 	{
-		TArray<MRMESH_INDEX_TYPE> TempIndices;
+		TArray<int32> TempIndices;
 		TArray<FVector> TempVertices;
-		TArray<FColor> VertexColors;
+		TArray<FLinearColor> VertexColors;
 		const UPICOOpenXRRuntimeSettings* Settings = GetDefault<UPICOOpenXRRuntimeSettings>();
 		TArray<FVector> EmptyNormals;
 		TArray<FVector2D> EmptyUV;
-
+		TArray<FProcMeshTangent> EmptyTangents;
+		
+		SpatialMesh->SetWorldLocationAndRotation(MeshInfo.MeshPose.GetLocation(), MeshInfo.MeshPose.GetRotation());
 		if (Settings->bSemanticsAlignWithTriangle)
 		{
+			int32 ColorCount = MeshInfo.Semantics.Num();
+			VertexColors.Reserve(ColorCount);
 			for (int32 Index = 0; Index < MeshInfo.Semantics.Num(); ++Index)
 			{
 				ESemanticLabelPICO Semantic = MeshInfo.Semantics[Index];
@@ -286,18 +268,19 @@ bool ASpatialMeshActorPICO::UpdateMeshByMeshInfo(USpatialMeshComponentPICO* Spat
 						TempIndices.Add(IndicesStart + 1);
 						TempIndices.Add(IndicesStart + 2);
 
-						VertexColors.Add(GetColorBySceneLabel(Semantic));
-						VertexColors.Add(GetColorBySceneLabel(Semantic));
-						VertexColors.Add(GetColorBySceneLabel(Semantic));
+						FColor SemanticColor = GetColorBySceneLabel(Semantic);
+						VertexColors.Add(SemanticColor);
+						VertexColors.Add(SemanticColor);
+						VertexColors.Add(SemanticColor);
 
-						SpatialMesh->AddAnchorToSceneLabel(Index, Semantic);
-					}
+						SpatialMesh->AddIndexToSemanticLabel(Index, Semantic);					}
 				}
 			}
 		}
 		else
 		{
 			TempVertices = MeshInfo.Vertices;
+			TempIndices = MeshInfo.Indices;
 			if (Settings->bSemanticsAlignWithVertex)
 			{
 				for (int32 Index = 0; Index < MeshInfo.Semantics.Num(); ++Index)
@@ -309,24 +292,26 @@ bool ASpatialMeshActorPICO::UpdateMeshByMeshInfo(USpatialMeshComponentPICO* Spat
 				for (int32 Index = 0; Index < MeshInfo.Indices.Num() / 3; ++Index)
 				{
 					ESemanticLabelPICO SemanticLabel = MeshInfo.Semantics[MeshInfo.Indices[Index * 3]];
-					SpatialMesh->AddAnchorToSceneLabel(Index, SemanticLabel);
+					SpatialMesh->AddIndexToSemanticLabel(Index, SemanticLabel);
 				}
-			}
-
-			if (MeshInfo.Vertices.Num() && MeshInfo.Indices.Num())
-			{
-				TempIndices.Empty(MeshInfo.Indices.Num());
-				Algo::Transform(MeshInfo.Indices, TempIndices, [](const auto& Indice) { return static_cast<MRMESH_INDEX_TYPE>(Indice); });
 			}
 		}
 
 		if (TempVertices.Num() && TempIndices.Num())
 		{
-			SpatialMesh->UpdateMesh(MeshInfo.MeshPose.GetLocation(), MeshInfo.MeshPose.GetRotation(),
-			                        FVector(1, 1, 1), TempVertices, TempIndices, TArray<FVector2D>(), TArray<FPackedNormal>(), VertexColors);
+			//Create or update the mesh depending on if we've been created before
+			if (SpatialMesh->GetNumSections() > 0 && SpatialMesh->IsEqualWithCached(TempIndices))
+			{
+				SpatialMesh->UpdateMeshSection_LinearColor(0, TempVertices, EmptyNormals, EmptyUV, VertexColors, EmptyTangents);
+			}
+			else
+			{
+				SpatialMesh->CreateMeshSection_LinearColor(0, TempVertices, TempIndices, EmptyNormals, EmptyUV, VertexColors, EmptyTangents, CollisionType != ECollisionEnabled::Type::NoCollision);
+				SpatialMesh->SetCachedIndices(TempIndices);
+			}
 		}
+		return true;
 	}
-
 
 	return false;
 }

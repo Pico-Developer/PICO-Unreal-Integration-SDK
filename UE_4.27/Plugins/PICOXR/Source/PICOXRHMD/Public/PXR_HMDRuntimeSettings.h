@@ -89,7 +89,8 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "Enable PSensor?", ToolTip = "If you want to get PSensor state,Please enable it!"))
 		bool bEnablePSensor;
 
-	UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "HMD Only Tracking Rotation"))
+	// 3Dof is no longer supported
+	//UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "HMD Only Tracking Rotation"))
 		bool bIsHMD3Dof;
 
 	//Controller
@@ -164,6 +165,9 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = MixedReality, Meta = (DisplayName = "Enable Scene Capture"))
 		bool bEnableSceneCapture;
+
+	UPROPERTY(config, EditAnywhere, Category = MixedReality, meta = (DisplayName = "Enable Spatial Plane"))
+		bool bEnablePlane;
 	
 	UPROPERTY(Config, EditAnywhere, Category = MixedReality, Meta = (DisplayName = "Enable Spatial Mesh"))
 		bool bEnableMesh;

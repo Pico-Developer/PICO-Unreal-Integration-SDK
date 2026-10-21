@@ -15,27 +15,10 @@ namespace Pxr_Audio
 			virtual ~API() = default;
 
 			virtual const char* GetVersion(int* Major, int* Minor, int* Patch) = 0;
-			virtual PxrAudioSpatializer_Result CreateContext(PxrAudioSpatializer_RenderingMode Mode,
+			virtual PxrAudioSpatializer_Result CreateContext(PxrAudioSpatializer_RenderingQuality Quality,
 			                                                 size_t FramesPerBuffer,
 			                                                 size_t SampleRate) = 0;
 			virtual PxrAudioSpatializer_Result InitializeContext() = 0;
-			virtual PxrAudioSpatializer_Result SubmitMesh(
-				const float* Vertices,
-				int VerticesCount,
-				const int* Indices,
-				int IndicesCount,
-				PxrAudioSpatializer_AcousticsMaterial
-				Material,
-				int* GeometryId) = 0;
-			virtual PxrAudioSpatializer_Result SubmitMeshAndMaterialFactor(
-				const float* Vertices,
-				int VerticesCount,
-				const int* Indices,
-				int IndicesCount,
-				const float* AbsorptionFactor,
-				float ScatteringFactor,
-				float TransmissionFactor,
-				int* GeometryId) = 0;
 			virtual PxrAudioSpatializer_Result SubmitMeshWithConfig(
 				const float* Vertices,
 				int VerticesCount,
@@ -43,6 +26,14 @@ namespace Pxr_Audio
 				int IndicesCount,
 				const PxrAudioSpatializer_AcousticMeshConfig* Config,
 				int* GeometryId) = 0;
+			virtual PxrAudioSpatializer_Result UpdateMesh(
+				int GeometryId,
+				const float* Vertices,
+				int VerticesCount,
+				const int* Indices,
+				int IndicesCount,
+				const PxrAudioSpatializer_AcousticMeshConfig* Config,
+				int* NewGeometryId) = 0;
 			virtual PxrAudioSpatializer_Result RemoveMesh(int GeometryId) = 0;
 			virtual PxrAudioSpatializer_Result SetMeshEnable(int GeometryId, bool Enable) = 0;
 			virtual PxrAudioSpatializer_Result

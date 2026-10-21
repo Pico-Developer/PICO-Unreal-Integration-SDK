@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--PICO spatial plugin additions-->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+	<init>
+		<setBoolFromProperty result="bReceiveInput" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bReceiveInput" default="true"/>
+		<setBoolFromProperty result="bCustomDefaultWindow" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bCustomDefaultWindow" default="false"/>
+		<setBoolFromProperty result="bTransparentDefaultWindow" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bTransparentDefaultWindow" default="false"/>
+		<setIntFromProperty result="WindowAlphaPercentage" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="WindowAlphaPercentage" default="100"/>
+		<setIntFromProperty result="OffsetHorizontal" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="OffsetHorizontal" default="0"/>
+		<setIntFromProperty result="OffsetVertical" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="OffsetVertical" default="0"/>
+		<setBoolFromProperty result="bCustomDefaultWindowSize" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bCustomDefaultWindowSize" default="false"/>
+		<setIntFromProperty result="DefaultWindowCustomWidth" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="DefaultWindowCustomWidth" default="100"/>
+		<setIntFromProperty result="DefaultWindowCustomHeight" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="DefaultWindowCustomHeight" default="100"/>
+		<setBoolFromProperty result="bUsedBundleTool" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bUsedBundleTool" default="false"/>
+		<setStringFromProperty result="AssetMappingsAsset" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="AssetMappingsAsset" default="None" />
+		<setBoolFromProperty result="bUseOnlyManualAssetMappings" ini="Engine" section="/Script/PICOSpatialRuntimeSettings.PICOSpatialRuntimeSettings" property="bUseOnlyManualAssetMappings" default="false"/>
+		<setBoolIsEqual result="bAssetMappingsNone" arg1="$S(AssetMappingsAsset)" arg2="None"/>
+		<setBoolIsEqual result="bAssetMappingsEmpty" arg1="$S(AssetMappingsAsset)" arg2=""/>
+		<setBoolOr result="bAssetMappingsUnset" arg1="$B(bAssetMappingsNone)" arg2="$B(bAssetMappingsEmpty)"/>
+		<setBoolNot result="bUseAssetMappings" source="$B(bAssetMappingsUnset)"/>
+		<setBoolNot result="bUseDefaultBundle" source="$B(bUseOnlyManualAssetMappings)"/>
+		<setBoolFileExists result="bProjectBundleExists" file="$S(BuildDir)/../../../Build/Android/assets/pico_spatial.bundle"/>
+		<setBoolFileExists result="bProjectMappingsBundleExists" file="$S(BuildDir)/../../../Build/Android/assets/pico_spatial_mappings.bundle"/>
+	</init>
+	<!-- optional updates applied to AndroidManifest.xml -->
+	<androidManifestUpdates>
+		<addElements tag="application">
+			<activity android:name="com.epicgames.unreal.PICOSpatialActivity" >
+				<meta-data android:name="pvr.app.type" android:value="2d"/>
+			</activity>
+		</addElements>
+	</androidManifestUpdates>
+
+	<!-- optional additions to proguard -->
+	<proguardAdditions>
+		<insert>
+			-keep class com.epicgames.unreal.GameActivity{*;}
+			-keep class com.epicgames.unreal.PICOSpatialActivity{*;}
+		</insert>
+	</proguardAdditions>
+
+	<gameActivityImportAdditions>
+		<insert>
+			import android.view.WindowManager;
+			import android.graphics.PixelFormat;
+			import java.lang.reflect.Method;
+		</insert>
+	</gameActivityImportAdditions>
+
+	<buildGradleAdditions>
+		<insert>
+			android 
+			{
+				aaptOptions 
+				{
+					noCompress ".bundle"
+				}
+			}
+		</insert>
+		<if condition="bUseOnlyManualAssetMappings">
+			<true>
+				<if condition="bUseAssetMappings">
+					<false>
+						<insert>
+							throw new GradleException("PICO Spatial use-only-manual-asset-mappings mode is enabled, but Asset Mappings Asset is not configured.")
+						</insert>
+					</false>
+				</if>
+				<if condition="bProjectMappingsBundleExists">
+					<false>
+						<insert>
+							throw new GradleException("PICO Spatial use-only-manual-asset-mappings mode is enabled, but Build/Android/assets/pico_spatial_mappings.bundle was not found. Provide the manual mappings bundle before Android packaging.")
+						</insert>
+					</false>
+				</if>
+			</true>
+		</if>
+		<if condition="bUsedBundleTool">
+			<true>
+				<if condition="bUseDefaultBundle">
+					<true>
+						<if condition="bProjectBundleExists">
+							<false>
+								<insert>
+									throw new GradleException("PICO Spatial bundle tool is enabled, but Build/Android/assets/pico_spatial.bundle was not found. Run PICO Spatial cook and ensure the generated bundle is available before Android packaging.")
+								</insert>
+							</false>
+						</if>
+					</true>
+				</if>
+			</true>
+		</if>
+	</buildGradleAdditions>
+	
+	<gameActivityClassAdditions>
+		<insert>
+			public static boolean isSpatialPlatform = false;
+			
+			public boolean AndroidThunkJava_IsSpatialPlatform()
+			{
+			    try
+			    {
+			        Class&lt;? &gt; systemProperties = Class.forName("android.os.SystemProperties");
+			        Method getIntMethod = systemProperties.getMethod("getInt", String.class, int.class);
+			        int value = (int) getIntMethod.invoke(null, "persist.pvr.is_space_os", 0);
+			        isSpatialPlatform = value == 1;
+					return isSpatialPlatform;
+			    }
+			    catch (Exception e)
+			    {
+			        return false;
+			    }
+			}
+			
+			public void AndroidThunkJava_ModifyWindow(boolean transparent, int alpha, boolean size, int width, int height, int offsetX, int offsetY)
+			{
+				if(!isSpatialPlatform)
+				{
+					return;
+				}
+				_activity.runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							if (MySurfaceView != null)
+							{
+								MySurfaceView.getHolder().setFormat(transparent ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE);
+							}
+			
+							float a = alpha;
+							float b = 100;
+							Window window = getWindow();
+							WindowManager.LayoutParams params = window.getAttributes();
+							params.alpha = transparent ? (a / b) : 1.0f;
+							if (size)
+							{
+								params.width = width;
+								params.height = height;
+							}
+							params.x += offsetX;
+							params.y += offsetY;
+							window.setAttributes(params);
+						}
+					});
+			}
+			
+			public void AndroidThunkJava_ToggleVolumeSpaceWindowInput(boolean Enable)
+			{				
+				if(!isSpatialPlatform)
+				{
+					return;
+				}
+				_activity.runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{	
+							Window window = getWindow();
+							WindowManager.LayoutParams params = window.getAttributes();
+							
+							if(Enable)
+							{
+								params.flags &amp;= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+							}
+							else
+							{
+								params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+							}
+							
+							window.setAttributes(params);
+						}
+					});
+			}
+		</insert>
+	</gameActivityClassAdditions>
+			
+
+	<!-- optional additions to GameActivity onCreate in GameActivity.java	-->
+	<gameActivityOnCreateAdditions>
+		<insert>
+			AndroidThunkJava_IsSpatialPlatform();
+		</insert>
+
+		<insertValue value="    boolean bReceiveInput = $B(bReceiveInput);" />
+		<insertNewline/>
+		<insert>
+			AndroidThunkJava_ToggleVolumeSpaceWindowInput(bReceiveInput);
+		</insert>
+		
+		<if condition="bCustomDefaultWindow">
+			<true>
+				<insertValue value="    boolean bTransparentDefaultWindow = $B(bTransparentDefaultWindow);" />
+				<insertNewline/>
+				<insertValue value="    int WindowAlphaPercentage = $I(WindowAlphaPercentage);" />
+				<insertNewline/>
+				<insertValue value="    int X = $I(OffsetHorizontal);" />
+				<insertNewline/>
+				<insertValue value="    int Y = $I(OffsetVertical);" />
+				<insertNewline/>
+				<insertValue value="    boolean bCustomSize = $B(bCustomDefaultWindowSize);" />
+				<insertNewline/>
+				<insertValue value="    int Width = $I(DefaultWindowCustomWidth);" />
+				<insertNewline/>
+				<insertValue value="    int Height = $I(DefaultWindowCustomHeight);" />
+				<insertNewline/>
+				<insert>
+					AndroidThunkJava_ModifyWindow(bTransparentDefaultWindow, WindowAlphaPercentage, bCustomSize, Width, Height, X, Y);
+				</insert>
+			</true>
+		</if>
+	</gameActivityOnCreateAdditions>
+
+	<!-- optional additions to GameActivity onStart in GameActivity.java	-->
+	<gameActivityOnStartAdditions>
+		<insert>
+		</insert>
+	</gameActivityOnStartAdditions>
+
+	<!-- optional additions to GameActivity onResume in GameActivity.java -->
+	<gameActivityOnResumeAdditions>
+		<insert>
+		</insert>
+	</gameActivityOnResumeAdditions>
+	
+			<!-- optional files or directories to copy to Intermediate/Android/APK -->
+	<resourceCopies>
+		<isArch arch="arm64-v8a">
+			<log text="Copying libspatial_pack_loader.so"/>
+			<copyFile src="$S(PluginDir)/SpatialSDKLoader/libs/arm64-v8a/libspatial_pack_loader.so"
+						  dst="$S(BuildDir)/libs/arm64-v8a/libspatial_pack_loader.so"/>
+			<copyFile src="$S(PluginDir)/Android/java/com/epicgames/unreal/PICOSpatialActivity.java" dst="$S(BuildDir)/src/com/epicgames/unreal/PICOSpatialActivity.java" />
+
+			<deleteFiles filespec="assets/pico_spatial.bundle" />
+			<deleteFiles filespec="assets/pico_spatial_mappings.bundle" />
+		
+			<if condition="bUsedBundleTool">
+				<true>
+					<if condition="bUseDefaultBundle">
+						<true>
+							<if condition="bProjectBundleExists">
+								<true>
+									<log text="Copying project Build/Android/assets/pico_spatial.bundle"/>
+									<copyFile src="$S(BuildDir)/../../../Build/Android/assets/pico_spatial.bundle" dst="$S(BuildDir)/assets/pico_spatial.bundle" />
+								</true>
+								<false>
+									<log text="ERROR: PICO Spatial bundle tool is enabled, but project Build/Android/assets/pico_spatial.bundle was not found; Android packaging will fail."/>
+								</false>
+							</if>
+						</true>
+						<false>
+							<log text="Use-only-manual-asset-mappings mode enabled; default pico_spatial.bundle will not be staged"/>
+						</false>
+					</if>
+
+				</true>
+				<false>
+					<if condition="bUseOnlyManualAssetMappings">
+						<true>
+							<log text="Bundle tool disabled, but use-only-manual-asset-mappings mode is enabled; default pico_spatial.bundle will not be staged"/>
+						</true>
+						<false>
+							<log text="Bundle tool disabled; default pico_spatial.bundle will not be staged"/>
+						</false>
+					</if>
+				</false>
+			</if>
+
+			<if condition="bUseAssetMappings">
+				<true>
+					<if condition="bProjectMappingsBundleExists">
+						<true>
+							<log text="Copying project Build/Android/assets/pico_spatial_mappings.bundle"/>
+							<copyFile src="$S(BuildDir)/../../../Build/Android/assets/pico_spatial_mappings.bundle" dst="$S(BuildDir)/assets/pico_spatial_mappings.bundle" />
+						</true>
+						<false>
+							<log text="Project Build/Android/assets/pico_spatial_mappings.bundle not found; no mappings bundle will be staged unless use-only-manual-asset-mappings mode is enabled"/>
+						</false>
+					</if>
+				</true>
+				<false>
+					<log text="Asset Mappings Asset is not configured; no mappings bundle will be staged"/>
+				</false>
+			</if>
+		</isArch>
+	</resourceCopies>
+
+</root>

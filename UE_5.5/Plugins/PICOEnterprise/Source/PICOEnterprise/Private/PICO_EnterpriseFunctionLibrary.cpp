@@ -6,6 +6,7 @@
 
 #include "IXRTrackingSystem.h"
 #include "PICO_EnterpriseInterfaceWrapper.h"
+#include <vector>
 
 DEFINE_LOG_CATEGORY_STATIC(PxrSystemAPI, Log, All);
 
@@ -1524,12 +1525,12 @@ int32 UPICOEnterpriseFunctionLibrary::PE_StartActivity(const FString& PackageNam
 
 		int32 FlagSize = Flags.Num();
 		jintArray jarray_Flags = Env->NewIntArray(FlagSize);
-		jint jint_Flags[FlagSize];
+		std::vector<jint> jint_Flags(FlagSize);
 		for (int32 Index = 0; Index < FlagSize; ++Index)
 		{
 			jint_Flags[Index] = Flags[Index];
 		}
-		Env->SetIntArrayRegion(jarray_Flags, 0, FlagSize, jint_Flags);
+		Env->SetIntArrayRegion(jarray_Flags, 0, FlagSize, jint_Flags.data());
 
 		Result = FJavaWrapper::CallIntMethod(Env, FJavaWrapper::GameActivityThis, Method, *jstring_PackageName, *jstring_ClassName, *jstring_Action, *jstring_Extra, jarray_Categories, jarray_Flags, Ext);
 
@@ -1731,21 +1732,7 @@ void UPICOEnterpriseFunctionLibrary::PE_SetArUcoMarkerF(UObject* InWorldContext,
 bool UPICOEnterpriseFunctionLibrary::PE_InitEnterpriseService(FString& Token)
 {
 	Token.Empty();
-#if PLATFORM_ANDROID
-	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
-	{
-		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "GetToken", "()Ljava/lang/String;", false);
-		jstring JavaString = (jstring)FJavaWrapper::CallObjectMethod(Env, FJavaWrapper::GameActivityThis, Method);
-		if (JavaString != NULL)
-		{
-			const char* JavaChars = Env->GetStringUTFChars(JavaString, 0);
-			Token = FString(UTF8_TO_TCHAR(JavaChars));
-			Env->ReleaseStringUTFChars(JavaString, JavaChars);
-			Env->DeleteLocalRef(JavaString);
-		}
-	}
-#endif
-	return Token.Len() > 0;
+	return true;
 }
 
 int32 UPICOEnterpriseFunctionLibrary::PE_GetHeadTrackingConfidence()

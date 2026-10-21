@@ -153,3 +153,8 @@ bool UHMDFunctionLibraryPICO::SetProjectionLayerColorMatrix3x3fPICO(bool Enable,
 {
 	return FPICOOpenXRHMDModule::Get().GetXRPlugin().SetProjectionLayerColorMatrix3x3f(Enable, ColumnA, ColumnB, ColumnC);
 }
+
+bool UHMDFunctionLibraryPICO::GetBatteryStateDisplayPICO(EControllerHand Hand, bool& Valid, float& BatteryLevel, bool& Charging, bool& PluggedIn, bool& NoBattery)
+{
+	return FPICOOpenXRHMDModule::Get().GetXRPlugin().GetBatteryStateDisplay(Hand, Valid, BatteryLevel, Charging, PluggedIn, NoBattery);
+}

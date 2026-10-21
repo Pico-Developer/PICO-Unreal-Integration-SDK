@@ -85,6 +85,117 @@ static TAutoConsoleVariable<bool> CVarPICOEnableEyeTrackedFoveatedRendering(
 	ECVF_Default);
 #endif
 
+
+namespace
+{
+bool UpdateFrustumFromPlugin(PxrEyeType Eye, FPICOXRFrustum& OutFrustum)
+{
+	FPICOXRFrustum Frustum;
+	if (FPICOXRHMDModule::GetPluginWrapper().GetFrustum(
+		Eye,
+		&Frustum.FovLeft,
+		&Frustum.FovRight,
+		&Frustum.FovUp,
+		&Frustum.FovDown,
+		&Frustum.Near,
+		&Frustum.Far) != 0)
+	{
+		return false;
+	}
+
+	if (FMath::IsNearlyZero(Frustum.Near))
+	{
+		return false;
+	}
+
+	Frustum.FovLeft = FMath::Atan(Frustum.FovLeft / Frustum.Near);
+	Frustum.FovRight = FMath::Atan(Frustum.FovRight / Frustum.Near);
+	Frustum.FovUp = FMath::Atan(Frustum.FovUp / Frustum.Near);
+	Frustum.FovDown = FMath::Atan(Frustum.FovDown / Frustum.Near);
+	OutFrustum = Frustum;
+	return true;
+}
+
+void GetEyeOrientationForFallback(const int32 EyeIndex, FQuat& OutOrientation)
+{
+	OutOrientation = FQuat::Identity;
+#if PLATFORM_ANDROID
+	if (FPICOXRVersionHelper::IsThisVersionOrGreater(0x2000306))
+	{
+		PxrQuaternionf Quaternion = {};
+		if (FPICOXRHMDModule::GetPluginWrapper().GetEyeOrientation(EyeIndex, &Quaternion) == 0)
+		{
+			OutOrientation = FQuat(Quaternion.z, Quaternion.x, Quaternion.y, Quaternion.w);
+			return;
+		}
+	}
+#endif
+}
+
+void MergeEyeFrustumToHeadSpace(const FPICOXRFrustum& EyeFrustum, const FQuat& EyeOrientation, float& InOutLeft, float& InOutRight, float& InOutUp, float& InOutDown, bool& bHasValidCorner)
+{
+	const FVector EyeSpaceCorners[] =
+	{
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovLeft), FMath::Tan(EyeFrustum.FovUp)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovRight), FMath::Tan(EyeFrustum.FovUp)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovLeft), FMath::Tan(EyeFrustum.FovDown)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovRight), FMath::Tan(EyeFrustum.FovDown))
+	};
+
+	for (const FVector& EyeSpaceCorner : EyeSpaceCorners)
+	{
+		const FVector HeadSpaceCorner = EyeOrientation.RotateVector(EyeSpaceCorner);
+		if (HeadSpaceCorner.X <= KINDA_SMALL_NUMBER)
+		{
+			continue;
+		}
+
+		bHasValidCorner = true;
+		InOutLeft = FMath::Min(InOutLeft, FMath::Atan2(HeadSpaceCorner.Y, HeadSpaceCorner.X));
+		InOutRight = FMath::Max(InOutRight, FMath::Atan2(HeadSpaceCorner.Y, HeadSpaceCorner.X));
+		InOutUp = FMath::Max(InOutUp, FMath::Atan2(HeadSpaceCorner.Z, HeadSpaceCorner.X));
+		InOutDown = FMath::Min(InOutDown, FMath::Atan2(HeadSpaceCorner.Z, HeadSpaceCorner.X));
+	}
+}
+
+FPICOXRFrustum MakeFallbackBothFrustum(const FPICOXRFrustum& LeftFrustum, const FPICOXRFrustum& RightFrustum)
+{
+	FPICOXRFrustum CombinedFrustum;
+	FQuat LeftEyeOrientation = FQuat::Identity;
+	FQuat RightEyeOrientation = FQuat::Identity;
+	GetEyeOrientationForFallback(0, LeftEyeOrientation);
+	GetEyeOrientationForFallback(1, RightEyeOrientation);
+
+	float MergedLeft = TNumericLimits<float>::Max();
+	float MergedRight = TNumericLimits<float>::Lowest();
+	float MergedUp = TNumericLimits<float>::Lowest();
+	float MergedDown = TNumericLimits<float>::Max();
+	bool bHasValidCorner = false;
+	MergeEyeFrustumToHeadSpace(LeftFrustum, LeftEyeOrientation, MergedLeft, MergedRight, MergedUp, MergedDown, bHasValidCorner);
+	MergeEyeFrustumToHeadSpace(RightFrustum, RightEyeOrientation, MergedLeft, MergedRight, MergedUp, MergedDown, bHasValidCorner);
+
+	if (bHasValidCorner)
+	{
+		CombinedFrustum.FovLeft = MergedLeft;
+		CombinedFrustum.FovRight = MergedRight;
+		CombinedFrustum.FovUp = MergedUp;
+		CombinedFrustum.FovDown = MergedDown;
+	}
+	else
+	{
+		CombinedFrustum.FovLeft = FMath::Min(LeftFrustum.FovLeft, RightFrustum.FovLeft);
+		CombinedFrustum.FovRight = FMath::Max(LeftFrustum.FovRight, RightFrustum.FovRight);
+		CombinedFrustum.FovUp = FMath::Max(LeftFrustum.FovUp, RightFrustum.FovUp);
+		CombinedFrustum.FovDown = FMath::Min(LeftFrustum.FovDown, RightFrustum.FovDown);
+	}
+
+	CombinedFrustum.Near = FMath::Min(LeftFrustum.Near, RightFrustum.Near);
+	CombinedFrustum.Far = FMath::Max(LeftFrustum.Far, RightFrustum.Far);
+	return CombinedFrustum;
+}
+
+}
+
 float FPICOXRHMD::IpdValue = 0.f;
 FName FPICOXRHMD::GetSystemName() const
 {
@@ -186,12 +297,7 @@ bool FPICOXRHMD::GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrienta
 	switch (InDeviceId)
 	{
 	case 0:
-		FOV.FovLeft = (LeftFrustum.FovLeft + RightFrustum.FovLeft) / 2;
-		FOV.FovRight = (LeftFrustum.FovRight + RightFrustum.FovRight) / 2;
-		FOV.FovUp = (LeftFrustum.FovUp + RightFrustum.FovUp) / 2;
-		FOV.FovDown = (LeftFrustum.FovDown + RightFrustum.FovDown) / 2;
-		FOV.Near = (LeftFrustum.Near + RightFrustum.Near) / 2;
-		FOV.Far = (LeftFrustum.Far + RightFrustum.Far) / 2;
+		FOV = BothFrustum;
 		break;
 	case 1:
 		FOV = LeftFrustum;
@@ -201,7 +307,6 @@ bool FPICOXRHMD::GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrienta
 		break;
 	default:
 		return false;
-		break;
 	}
 
 	if (InDeviceId == 0)
@@ -509,11 +614,6 @@ float FPICOXRHMD::GetWorldToMetersScale() const
 	return 100.0f;
 }
 
-bool FPICOXRHMD::DoesSupportPositionalTracking() const
-{
-	return !PICOXRSetting->bIsHMD3Dof;
-}
-
 bool FPICOXRHMD::IsHMDEnabled() const
 {
 	CheckInGameThread();
@@ -552,14 +652,8 @@ bool FPICOXRHMD::GetHMDMonitorInfo(MonitorInfo &MonitorDesc)
 
 void FPICOXRHMD::GetFieldOfView(float& OutHFOVInDegrees, float& OutVFOVInDegrees) const
 {
-	const float LeftHFOVInDegrees = FMath::RadiansToDegrees(LeftFrustum.FovRight - LeftFrustum.FovLeft);
-	const float LeftVFOVInDegrees = FMath::RadiansToDegrees(LeftFrustum.FovUp - LeftFrustum.FovDown);
-
-	const float RightHFOVInDegrees = FMath::RadiansToDegrees(RightFrustum.FovRight - RightFrustum.FovLeft);
-	const float RightVFOVInDegrees = FMath::RadiansToDegrees(RightFrustum.FovUp - RightFrustum.FovDown);
-
-	OutHFOVInDegrees = (LeftHFOVInDegrees+RightHFOVInDegrees)/2;
-	OutVFOVInDegrees = (LeftVFOVInDegrees+RightVFOVInDegrees)/2;
+	OutHFOVInDegrees = FMath::RadiansToDegrees(BothFrustum.FovRight - BothFrustum.FovLeft);
+	OutVFOVInDegrees = FMath::RadiansToDegrees(BothFrustum.FovUp - BothFrustum.FovDown);
 }
 
 bool FPICOXRHMD::IsChromaAbCorrectionEnabled() const
@@ -812,9 +906,24 @@ void FPICOXRHMD::SetFinalViewRect(FRHICommandListImmediate& RHICmdList, const ES
 
 FMatrix FPICOXRHMD::GetStereoProjectionMatrix(const enum EStereoscopicPass StereoPassType) const
 {
-	FPICOXRFrustum Frustum = (StereoPassType == eSSP_LEFT_EYE) ? LeftFrustum : RightFrustum;
+	FPICOXRFrustum Frustum = RightFrustum;
 	const float ProjectionCenterOffset = 0;// 0.151976421f;
-	const float PassProjectionOffset = (StereoPassType == eSSP_LEFT_EYE) ? ProjectionCenterOffset : -ProjectionCenterOffset;
+	float PassProjectionOffset = -ProjectionCenterOffset;
+	if (StereoPassType == eSSP_LEFT_EYE)
+	{
+		Frustum = LeftFrustum;
+		PassProjectionOffset = ProjectionCenterOffset;
+	}
+	else if (StereoPassType == eSSP_RIGHT_EYE)
+	{
+		Frustum = RightFrustum;
+		PassProjectionOffset = -ProjectionCenterOffset;
+	}
+	else if (StereoPassType == eSSP_FULL)
+	{
+		Frustum = BothFrustum;
+		PassProjectionOffset = 0.0f;
+	}
 	// correct far and near planes for reversed-Z projection matrix
 	const float WorldScale = GetWorldToMetersScale() * (1.0 / 100.0f); // physical scale is 100 UUs/meter
 	float ZNear = GNearClippingPlane * WorldScale;
@@ -899,18 +1008,12 @@ FPICOXRHMD::~FPICOXRHMD()
 void FPICOXRHMD::BeginXR()
 {
 	//Frustum
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_LEFT, &LeftFrustum.FovLeft, &LeftFrustum.FovRight, &LeftFrustum.FovUp, &LeftFrustum.FovDown, &LeftFrustum.Near, &LeftFrustum.Far);
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_RIGHT, &RightFrustum.FovLeft, &RightFrustum.FovRight, &RightFrustum.FovUp, &RightFrustum.FovDown, &RightFrustum.Near, &RightFrustum.Far);
-
-	LeftFrustum.FovLeft = FMath::Atan(LeftFrustum.FovLeft / LeftFrustum.Near);
-	LeftFrustum.FovRight = FMath::Atan(LeftFrustum.FovRight / LeftFrustum.Near);
-	LeftFrustum.FovUp = FMath::Atan(LeftFrustum.FovUp / LeftFrustum.Near);
-	LeftFrustum.FovDown = FMath::Atan(LeftFrustum.FovDown / LeftFrustum.Near);
-
-	RightFrustum.FovLeft = FMath::Atan(RightFrustum.FovLeft / RightFrustum.Near);
-	RightFrustum.FovRight = FMath::Atan(RightFrustum.FovRight / RightFrustum.Near);
-	RightFrustum.FovUp = FMath::Atan(RightFrustum.FovUp / RightFrustum.Near);
-	RightFrustum.FovDown = FMath::Atan(RightFrustum.FovDown / RightFrustum.Near);
+	const bool bHasLeftFrustum = UpdateFrustumFromPlugin(PXR_EYE_LEFT, LeftFrustum);
+	const bool bHasRightFrustum = UpdateFrustumFromPlugin(PXR_EYE_RIGHT, RightFrustum);
+	if (!UpdateFrustumFromPlugin(PXR_EYE_BOTH, BothFrustum) && bHasLeftFrustum && bHasRightFrustum)
+	{
+		BothFrustum = MakeFallbackBothFrustum(LeftFrustum, RightFrustum);
+	}
 
 	IpdValue = FPICOXRHMDModule::GetPluginWrapper().GetIPD();
 	PXR_LOGI(PxrUnreal, "Startup Get ipd = %f", IpdValue);
@@ -1783,17 +1886,12 @@ void FPICOXRHMD::OnFoveationLevelChange(int32 NewFoveationLevel)
 void FPICOXRHMD::OnFrustumStateChange()
 {
 #if PLATFORM_ANDROID
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_LEFT, &LeftFrustum.FovLeft, &LeftFrustum.FovRight, &LeftFrustum.FovUp, &LeftFrustum.FovDown,&LeftFrustum.Near,&LeftFrustum.Far);
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_RIGHT, &RightFrustum.FovLeft, &RightFrustum.FovRight, &RightFrustum.FovUp, &RightFrustum.FovDown,&RightFrustum.Near,&RightFrustum.Far);
- 	LeftFrustum.FovLeft = FMath::Atan(LeftFrustum.FovLeft/LeftFrustum.Near);
- 	LeftFrustum.FovRight = FMath::Atan(LeftFrustum.FovRight/LeftFrustum.Near);
- 	LeftFrustum.FovUp = FMath::Atan(LeftFrustum.FovUp/LeftFrustum.Near);
- 	LeftFrustum.FovDown = FMath::Atan(LeftFrustum.FovDown/LeftFrustum.Near);
-
- 	RightFrustum.FovLeft = FMath::Atan(RightFrustum.FovLeft/RightFrustum.Near);
- 	RightFrustum.FovRight = FMath::Atan(RightFrustum.FovRight/RightFrustum.Near);
- 	RightFrustum.FovUp = FMath::Atan(RightFrustum.FovUp/RightFrustum.Near);
- 	RightFrustum.FovDown = FMath::Atan(RightFrustum.FovDown/RightFrustum.Near);
+	const bool bHasLeftFrustum = UpdateFrustumFromPlugin(PXR_EYE_LEFT, LeftFrustum);
+	const bool bHasRightFrustum = UpdateFrustumFromPlugin(PXR_EYE_RIGHT, RightFrustum);
+	if (!UpdateFrustumFromPlugin(PXR_EYE_BOTH, BothFrustum) && bHasLeftFrustum && bHasRightFrustum)
+	{
+		BothFrustum = MakeFallbackBothFrustum(LeftFrustum, RightFrustum);
+	}
 #endif
 }
 
@@ -1826,7 +1924,7 @@ bool FPICOXRHMD::InitializeSession()
 
 	{
 		//SetAppEngineInfo2
-		FString UnrealSDKVersion = "UE4_3.3.2";
+ 		FString UnrealSDKVersion = "UE4_6.0.0";
 		FString UnrealVersion = FString::FromInt(ENGINE_MINOR_VERSION);
 		UnrealSDKVersion = UnrealSDKVersion + UnrealVersion;
 		PXR_LOGI(PxrUnreal, "%s,xrVersion:%s", PLATFORM_CHAR(*FEngineVersion::Current().ToString()), PLATFORM_CHAR(*UnrealSDKVersion));

@@ -4,6 +4,8 @@
 
 #include "PXR_HMD.h"
 
+#include <mutex>
+
 #include "DataDrivenShaderPlatformInfo.h"
 #include "PXR_HMDPrivateRHI.h"
 
@@ -12,6 +14,7 @@
 #include "XRThreadUtils.h"
 #include "PXR_Input.h"
 #include "IHeadMountedDisplayVulkanExtensions.h"
+#include "PXR_Shaders.h"
 #include "PXR_Log.h"
 #include "PXR_StereoLayer.h"
 #include "PXR_HMDFunctionLibrary.h"
@@ -23,6 +26,8 @@
 #include "Misc/CoreDelegates.h"
 #include "GameFramework/GameUserSettings.h"
 #include "PICO_MRCSceneCapture2D.h"
+#include "PXR_EventManager.h"
+#include "ScreenRendering.h"
 
 #define PICO_PAUSED_IDLE_FPS 10
 
@@ -95,7 +100,197 @@ static TAutoConsoleVariable<int32> CVarPICOBlendModeSetting(
 	TEXT("2: Additive Mode, Eye Buffer will not clip by Alpha\n"),
 	ECVF_Scalability | ECVF_RenderThreadSafe);
 
+namespace
+{
+bool UpdateFrustumFromPlugin(PxrEyeType Eye, FPICOXRFrustum& OutFrustum)
+{
+	FPICOXRFrustum Frustum;
+	if (FPICOXRHMDModule::GetPluginWrapper().GetFrustum(
+		Eye,
+		&Frustum.FovLeft,
+		&Frustum.FovRight,
+		&Frustum.FovUp,
+		&Frustum.FovDown,
+		&Frustum.Near,
+		&Frustum.Far) != 0)
+	{
+		return false;
+	}
+
+	if (FMath::IsNearlyZero(Frustum.Near))
+	{
+		return false;
+	}
+
+	Frustum.FovLeft = FMath::Atan(Frustum.FovLeft / Frustum.Near);
+	Frustum.FovRight = FMath::Atan(Frustum.FovRight / Frustum.Near);
+	Frustum.FovUp = FMath::Atan(Frustum.FovUp / Frustum.Near);
+	Frustum.FovDown = FMath::Atan(Frustum.FovDown / Frustum.Near);
+	OutFrustum = Frustum;
+	return true;
+}
+
+void GetEyeOrientationForFallback(const int32 EyeIndex, FQuat& OutOrientation)
+{
+	OutOrientation = FQuat::Identity;
+#if PLATFORM_ANDROID
+	if (FPICOXRVersionHelper::IsThisVersionOrGreater(0x2000306))
+	{
+		PxrQuaternionf Quaternion = {};
+		if (FPICOXRHMDModule::GetPluginWrapper().GetEyeOrientation(EyeIndex, &Quaternion) == 0)
+		{
+			OutOrientation = FQuat(Quaternion.z, Quaternion.x, Quaternion.y, Quaternion.w);
+			return;
+		}
+	}
+#endif
+}
+
+void MergeEyeFrustumToHeadSpace(const FPICOXRFrustum& EyeFrustum, const FQuat& EyeOrientation, float& InOutLeft, float& InOutRight, float& InOutUp, float& InOutDown, bool& bHasValidCorner)
+{
+	const FVector EyeSpaceCorners[] =
+	{
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovLeft), FMath::Tan(EyeFrustum.FovUp)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovRight), FMath::Tan(EyeFrustum.FovUp)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovLeft), FMath::Tan(EyeFrustum.FovDown)),
+		FVector(1.0f, FMath::Tan(EyeFrustum.FovRight), FMath::Tan(EyeFrustum.FovDown))
+	};
+
+	for (const FVector& EyeSpaceCorner : EyeSpaceCorners)
+	{
+		const FVector HeadSpaceCorner = EyeOrientation.RotateVector(EyeSpaceCorner);
+		if (HeadSpaceCorner.X <= KINDA_SMALL_NUMBER)
+		{
+			continue;
+		}
+
+		bHasValidCorner = true;
+		InOutLeft = FMath::Min(InOutLeft, FMath::Atan2(HeadSpaceCorner.Y, HeadSpaceCorner.X));
+		InOutRight = FMath::Max(InOutRight, FMath::Atan2(HeadSpaceCorner.Y, HeadSpaceCorner.X));
+		InOutUp = FMath::Max(InOutUp, FMath::Atan2(HeadSpaceCorner.Z, HeadSpaceCorner.X));
+		InOutDown = FMath::Min(InOutDown, FMath::Atan2(HeadSpaceCorner.Z, HeadSpaceCorner.X));
+	}
+}
+
+FPICOXRFrustum MakeFallbackBothFrustum(const FPICOXRFrustum& LeftFrustum, const FPICOXRFrustum& RightFrustum)
+{
+	FPICOXRFrustum CombinedFrustum;
+	FQuat LeftEyeOrientation = FQuat::Identity;
+	FQuat RightEyeOrientation = FQuat::Identity;
+	GetEyeOrientationForFallback(0, LeftEyeOrientation);
+	GetEyeOrientationForFallback(1, RightEyeOrientation);
+
+	float MergedLeft = TNumericLimits<float>::Max();
+	float MergedRight = TNumericLimits<float>::Lowest();
+	float MergedUp = TNumericLimits<float>::Lowest();
+	float MergedDown = TNumericLimits<float>::Max();
+	bool bHasValidCorner = false;
+	MergeEyeFrustumToHeadSpace(LeftFrustum, LeftEyeOrientation, MergedLeft, MergedRight, MergedUp, MergedDown, bHasValidCorner);
+	MergeEyeFrustumToHeadSpace(RightFrustum, RightEyeOrientation, MergedLeft, MergedRight, MergedUp, MergedDown, bHasValidCorner);
+
+	if (bHasValidCorner)
+	{
+		CombinedFrustum.FovLeft = MergedLeft;
+		CombinedFrustum.FovRight = MergedRight;
+		CombinedFrustum.FovUp = MergedUp;
+		CombinedFrustum.FovDown = MergedDown;
+	}
+	else
+	{
+		CombinedFrustum.FovLeft = FMath::Min(LeftFrustum.FovLeft, RightFrustum.FovLeft);
+		CombinedFrustum.FovRight = FMath::Max(LeftFrustum.FovRight, RightFrustum.FovRight);
+		CombinedFrustum.FovUp = FMath::Max(LeftFrustum.FovUp, RightFrustum.FovUp);
+		CombinedFrustum.FovDown = FMath::Min(LeftFrustum.FovDown, RightFrustum.FovDown);
+	}
+
+	CombinedFrustum.Near = FMath::Min(LeftFrustum.Near, RightFrustum.Near);
+	CombinedFrustum.Far = FMath::Max(LeftFrustum.Far, RightFrustum.Far);
+	return CombinedFrustum;
+}
+
+}
+
 float FPICOXRHMD::IpdValue = 0.f;
+
+#ifdef PICO_CUSTOM_ENGINE
+void RenderEnvironmentDepthMinMaxTexture_RenderThread(IRendererModule* RendererModule, FTextureRHIRef EnvironmentDepthMinMaxTexture,
+	FTextureRHIRef EnvironmentDepthSwapchain, FRHICommandListImmediate& RHICmdList)
+{
+	FRHIRenderPassInfo RPInfo(EnvironmentDepthMinMaxTexture, ERenderTargetActions::DontLoad_Store);
+	int32 SliceCount = EnvironmentDepthMinMaxTexture->GetDesc().ArraySize;
+#if PLATFORM_ANDROID
+	bool bEnableMultiView = GSupportsMobileMultiView;
+#else
+	bool bEnableMultiView = false;
+#endif
+	if (bEnableMultiView)
+	{
+		RPInfo.MultiViewCount = 2;
+		SliceCount = 1;
+	}
+	for (int32 SliceIndex = 0; SliceIndex < SliceCount; ++SliceIndex)
+	{
+		if (!bEnableMultiView)
+		{
+			RPInfo.ColorRenderTargets[0].ArraySlice = SliceIndex;
+		}
+		RHICmdList.BeginRenderPass(RPInfo, TEXT("EnvironmentDepthMinMaxPrePass"));
+		{
+			auto SrcTexture = EnvironmentDepthSwapchain;
+			auto Extent = SrcTexture->GetDesc().Extent;
+			const uint32 ViewportWidth = Extent.X;
+			const uint32 ViewportHeight = Extent.Y;
+			const FIntPoint TargetSize(ViewportWidth, ViewportHeight);
+
+			FGraphicsPipelineStateInitializer GraphicsPSOInit;
+			GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();
+			GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
+			GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+			GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+
+			const auto FeatureLevel = GEngine ? GEngine->GetDefaultWorldFeatureLevel() : GMaxRHIFeatureLevel;
+			auto ShaderMap = GetGlobalShaderMap(FeatureLevel);
+			TShaderMapRef<FScreenVS> VertexShader(ShaderMap);
+			GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+			GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+
+			RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+			FRHISamplerState* SamplerState = TStaticSamplerState<SF_Point>::GetRHI();
+
+			FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+			if (bEnableMultiView)
+			{
+				GraphicsPSOInit.MultiViewCount = 2;
+				TShaderMapRef<FScreenPSEnvironmentDepthMinMax<true>> PixelShader(ShaderMap);
+				GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+				PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTexture, SliceIndex);
+			}
+			else
+			{
+				TShaderMapRef<FScreenPSEnvironmentDepthMinMax<false>> PixelShader(ShaderMap);
+				GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+				PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTexture, SliceIndex);
+			}
+			SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+			RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
+			
+			RHICmdList.SetViewport(0.0f, 0.0f, 0.0f, ViewportWidth, ViewportHeight, 1.0f);
+
+			RendererModule->DrawRectangle(
+				RHICmdList,
+				0.0f, 0.0f, ViewportWidth, ViewportHeight,
+				0.0f, 0.0f, 1.0f, 1.0f,
+				TargetSize,
+				FIntPoint(1, 1),
+				VertexShader,
+				EDRF_Default);
+		}
+		RHICmdList.EndRenderPass();
+	}
+}
+
+#endif
+
 FName FPICOXRHMD::GetSystemName() const
 {
     static FName DefaultName(TEXT("PICOXRHMD"));
@@ -196,12 +391,7 @@ bool FPICOXRHMD::GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrienta
 	switch (InDeviceId)
 	{
 	case 0:
-		FOV.FovLeft = (LeftFrustum.FovLeft + RightFrustum.FovLeft) / 2;
-		FOV.FovRight = (LeftFrustum.FovRight + RightFrustum.FovRight) / 2;
-		FOV.FovUp = (LeftFrustum.FovUp + RightFrustum.FovUp) / 2;
-		FOV.FovDown = (LeftFrustum.FovDown + RightFrustum.FovDown) / 2;
-		FOV.Near = (LeftFrustum.Near + RightFrustum.Near) / 2;
-		FOV.Far = (LeftFrustum.Far + RightFrustum.Far) / 2;
+		FOV = BothFrustum;
 		break;
 	case 1:
 		FOV = LeftFrustum;
@@ -211,7 +401,6 @@ bool FPICOXRHMD::GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrienta
 		break;
 	default:
 		return false;
-		break;
 	}
 
 	if (InDeviceId == 0)
@@ -524,11 +713,6 @@ float FPICOXRHMD::GetWorldToMetersScale() const
 	return 100.0f;
 }
 
-bool FPICOXRHMD::DoesSupportPositionalTracking() const
-{
-	return !PICOXRSetting->bIsHMD3Dof;
-}
-
 bool FPICOXRHMD::IsHeadTrackingAllowed() const
 {
 	return true;
@@ -577,14 +761,8 @@ bool FPICOXRHMD::GetHMDMonitorInfo(MonitorInfo &MonitorDesc)
 
 void FPICOXRHMD::GetFieldOfView(float& OutHFOVInDegrees, float& OutVFOVInDegrees) const
 {
-	const float LeftHFOVInDegrees = FMath::RadiansToDegrees(LeftFrustum.FovRight - LeftFrustum.FovLeft);
-	const float LeftVFOVInDegrees = FMath::RadiansToDegrees(LeftFrustum.FovUp - LeftFrustum.FovDown);
-
-	const float RightHFOVInDegrees = FMath::RadiansToDegrees(RightFrustum.FovRight - RightFrustum.FovLeft);
-	const float RightVFOVInDegrees = FMath::RadiansToDegrees(RightFrustum.FovUp - RightFrustum.FovDown);
-
-	OutHFOVInDegrees = (LeftHFOVInDegrees+RightHFOVInDegrees)/2;
-	OutVFOVInDegrees = (LeftVFOVInDegrees+RightVFOVInDegrees)/2;
+	OutHFOVInDegrees = FMath::RadiansToDegrees(BothFrustum.FovRight - BothFrustum.FovLeft);
+	OutVFOVInDegrees = FMath::RadiansToDegrees(BothFrustum.FovUp - BothFrustum.FovDown);
 }
 
 bool FPICOXRHMD::IsChromaAbCorrectionEnabled() const
@@ -629,8 +807,40 @@ void FPICOXRHMD::OnBeginRendering_RenderThread(FRHICommandListImmediate& RHICmdL
 #endif
 	
 	OnRHIFrameBegin_RenderThread();
+#ifdef PICO_CUSTOM_ENGINE
+	OnBeginRenderingLate_RenderThread(RHICmdList);
+#endif
+	
+}
+#ifdef PICO_CUSTOM_ENGINE
+void FPICOXRHMD::PostBeginFrame_RHIThread()
+{
+	int64 predictedDisplayTime =GameFrame_RHIThread->predictedDisplayTimeMs;
+	AcquireEnvironmentDepthTexture_RHIThread(predictedDisplayTime);
 }
 
+void FPICOXRHMD::OnBeginRenderingLate_RenderThread(FRHICommandListImmediate& RHICmdList)
+{
+	if ( EnvironmentDepthMinMaxTexture != nullptr && !EnvironmentDepthSwapchain.IsEmpty())
+	{
+		TOptional<PxrEnvironmentDepthImage> DepthFrameDesc{};
+		if (!GetEnvironmentDepthFrameDesc_RenderThread(DepthFrameDesc) || !DepthFrameDesc.IsSet())
+		{
+			return;
+		}
+		if (static_cast<uint32_t>(EnvironmentDepthSwapchain.Num()) <= DepthFrameDesc->swapchainIndex
+			|| DepthFrameDesc->swapchainIndex == PrevEnvironmentDepthMinMaxSwapchainIndex)
+		{
+			return;
+		}
+		
+		RenderEnvironmentDepthMinMaxTexture_RenderThread(RendererModule, EnvironmentDepthMinMaxTexture,
+			EnvironmentDepthSwapchain[DepthFrameDesc->swapchainIndex], RHICmdList);
+
+		PrevEnvironmentDepthMinMaxSwapchainIndex = DepthFrameDesc->swapchainIndex;
+	}
+}
+#endif
 bool FPICOXRHMD::OnStartGameFrame(FWorldContext& WorldContext)
 {
 	PXR_LOGV(PxrUnreal, "OnStartGameFrame");
@@ -861,9 +1071,24 @@ int32 FPICOXRHMD::AcquireColorTexture()
 
 FMatrix FPICOXRHMD::GetStereoProjectionMatrix(int32 StereoPassType) const
 {
-	FPICOXRFrustum Frustum = (StereoPassType == eSSE_LEFT_EYE) ? LeftFrustum : RightFrustum;
+	FPICOXRFrustum Frustum = RightFrustum;
 	const float ProjectionCenterOffset = 0;// 0.151976421f;
-	const float PassProjectionOffset = (StereoPassType == eSSE_LEFT_EYE) ? ProjectionCenterOffset : -ProjectionCenterOffset;
+	float PassProjectionOffset = -ProjectionCenterOffset;
+	if (StereoPassType == eSSE_LEFT_EYE)
+	{
+		Frustum = LeftFrustum;
+		PassProjectionOffset = ProjectionCenterOffset;
+	}
+	else if (StereoPassType == eSSE_RIGHT_EYE)
+	{
+		Frustum = RightFrustum;
+		PassProjectionOffset = -ProjectionCenterOffset;
+	}
+	else if (StereoPassType == eSSE_MONOSCOPIC)
+	{
+		Frustum = BothFrustum;
+		PassProjectionOffset = 0.0f;
+	}
 	// correct far and near planes for reversed-Z projection matrix
 	const float WorldScale = GetWorldToMetersScale() * (1.0 / 100.0f); // physical scale is 100 UUs/meter
 	float ZNear = GNearClippingPlane * WorldScale;
@@ -932,6 +1157,11 @@ FPICOXRHMD::FPICOXRHMD(const FAutoRegister&AutoRegister)
 	NextLayerId = 0;
 	GameSettings = CreateNewSettings();
 	GameSettings_RenderThread =CreateNewSettings();
+#ifdef PICO_CUSTOM_ENGINE
+	// grab a pointer to the renderer module for displaying our mirror window
+	static const FName RendererModuleName("Renderer");
+	RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
+#endif
 }
 
 FPICOXRHMD::~FPICOXRHMD()
@@ -948,18 +1178,12 @@ void FPICOXRHMD::BeginXR()
 {
 #if PLATFORM_ANDROID
 	//Frustum
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_LEFT, &LeftFrustum.FovLeft, &LeftFrustum.FovRight, &LeftFrustum.FovUp, &LeftFrustum.FovDown, &LeftFrustum.Near, &LeftFrustum.Far);
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_RIGHT, &RightFrustum.FovLeft, &RightFrustum.FovRight, &RightFrustum.FovUp, &RightFrustum.FovDown, &RightFrustum.Near, &RightFrustum.Far);
-
-	LeftFrustum.FovLeft = FMath::Atan(LeftFrustum.FovLeft / LeftFrustum.Near);
-	LeftFrustum.FovRight = FMath::Atan(LeftFrustum.FovRight / LeftFrustum.Near);
-	LeftFrustum.FovUp = FMath::Atan(LeftFrustum.FovUp / LeftFrustum.Near);
-	LeftFrustum.FovDown = FMath::Atan(LeftFrustum.FovDown / LeftFrustum.Near);
-
-	RightFrustum.FovLeft = FMath::Atan(RightFrustum.FovLeft / RightFrustum.Near);
-	RightFrustum.FovRight = FMath::Atan(RightFrustum.FovRight / RightFrustum.Near);
-	RightFrustum.FovUp = FMath::Atan(RightFrustum.FovUp / RightFrustum.Near);
-	RightFrustum.FovDown = FMath::Atan(RightFrustum.FovDown / RightFrustum.Near);
+	const bool bHasLeftFrustum = UpdateFrustumFromPlugin(PXR_EYE_LEFT, LeftFrustum);
+	const bool bHasRightFrustum = UpdateFrustumFromPlugin(PXR_EYE_RIGHT, RightFrustum);
+	if (!UpdateFrustumFromPlugin(PXR_EYE_BOTH, BothFrustum) && bHasLeftFrustum && bHasRightFrustum)
+	{
+		BothFrustum = MakeFallbackBothFrustum(LeftFrustum, RightFrustum);
+	}
 
 	IpdValue = FPICOXRHMDModule::GetPluginWrapper().GetIPD();
 	PXR_LOGI(PxrUnreal, "Startup Get ipd = %f", IpdValue);
@@ -1909,6 +2133,128 @@ void FPICOXRHMD::MakeAllStereoLayerComponentsDirty()
 		StereoLayerComponent->MarkStereoLayerDirty();
 	}
 }
+#ifdef PICO_CUSTOM_ENGINE
+bool FPICOXRHMD::ComputeEnvironmentDepthParameters_RenderThread(FVector2f& DepthFactors, FMatrix44f ScreenToDepth[2], FMatrix44f DepthViewProj[2],
+	int& SwapchainIndex)
+{
+	float WorldToMeters_RenderThread =100.0f;
+	float ScreenNearZ = GNearClippingPlane / WorldToMeters_RenderThread;
+	TOptional<PxrEnvironmentDepthImage> DepthFrameDesc;
+	if (!GetEnvironmentDepthFrameDesc_RenderThread(DepthFrameDesc) || !DepthFrameDesc.IsSet())
+	{
+		return false;
+	}
+
+	SwapchainIndex = DepthFrameDesc->swapchainIndex;
+	const auto InverseBaseOrientation = GameSettings->BaseOrientation.Inverse();
+
+	// Assume NearZ and FarZ are the same for left and right eyes
+	const float DepthNearZ = DepthFrameDesc->nearZ;
+	const float DepthFarZ = DepthFrameDesc->farZ;
+
+	float Scale;
+	float Offset;
+
+	if (DepthFarZ < DepthNearZ || (!FGenericPlatformMath::IsFinite(DepthFarZ)))
+	{
+		// Inf far plane:
+		Scale = DepthNearZ;
+		Offset = 0.0f;
+	}
+	else
+	{
+		// Finite far plane:
+		Scale = (DepthFarZ * DepthNearZ) / (DepthFarZ - DepthNearZ);
+		Offset = DepthNearZ / (DepthFarZ - DepthNearZ);
+	}
+	
+	DepthFactors.X = -ScreenNearZ / Scale;
+	DepthFactors.Y = (Offset + 1.0f) * ScreenNearZ / Scale;
+
+	// The pose extrapolated to the predicted display time of the current frame
+	const FQuat ScreenOrientation = GameFrame_RenderThread->Orientation;
+
+	for (uint32 i = 0; i < 2; ++i)
+	{
+		const float DepthUpTan = tanf(DepthFrameDesc->views[i].fov.angleUp);
+		const float DepthDownTan = tanf(-DepthFrameDesc->views[i].fov.angleDown);
+		const float DepthLeftTan = tanf(-DepthFrameDesc->views[i].fov.angleLeft);
+		const float DepthRightTan = tanf(DepthFrameDesc->views[i].fov.angleRight);
+
+		if (DepthViewProj != nullptr)
+		{
+			const float ZNear = DepthFrameDesc->nearZ * WorldToMeters_RenderThread;
+			const float ZFar = DepthFrameDesc->farZ * WorldToMeters_RenderThread;
+			FMatrix DepthProjectionMatrix = FPICOXRUtils::MakeProjection(ZNear, ZFar, DepthUpTan, DepthDownTan, DepthLeftTan, DepthRightTan, true);
+			
+			auto DepthOrientation = GameFrame_RenderThread->TrackingToWorld.GetRotation() * InverseBaseOrientation * ToFQuat(DepthFrameDesc->views[i].pose.orientation);
+
+			auto ViewMatrix = DepthOrientation.Inverse().ToMatrix()
+				* FMatrix(FPlane(0, 0, 1, 0), FPlane(1, 0, 0, 0),
+					FPlane(0, 1, 0, 0), FPlane(0, 0, 0, 1));
+
+			FVector EyePos=GameFrame_RenderThread->Position;
+			auto DepthTranslation = ToFVector(DepthFrameDesc->views[i].pose.position, WorldToMeters_RenderThread);
+			EyePos=DepthTranslation;
+			auto Delta = EyePos - DepthTranslation;
+			ViewMatrix = ViewMatrix.ConcatTranslation(ViewMatrix.TransformPosition(Delta));
+			DepthViewProj[i] = static_cast<FMatrix44f>(ViewMatrix * DepthProjectionMatrix);
+		}
+
+		float UpAngle, DownAngle, LeftAngle, RightAngle;
+		const IHeadMountedDisplay* Hmd = GEngine->XRSystem.Get()->GetHMDDevice();
+		Hmd->GetStereoFieldOfView(i, LeftAngle, RightAngle, UpAngle, DownAngle);
+
+		const float ScreenUpTan = tanf(UpAngle);
+		const float ScreenDownTan = tanf(-DownAngle);
+		const float ScreenLeftTan = tanf(-LeftAngle);
+		const float ScreenRightTan = tanf(RightAngle);
+
+		auto T_ScreenCamera_ScreenNormCoord = FPICOXRUtils::MakeUnprojectionMatrix(ScreenUpTan, ScreenDownTan, ScreenLeftTan, ScreenRightTan);
+		auto T_DepthNormCoord_DepthCamera = FPICOXRUtils::MakeProjectionMatrix(DepthUpTan, DepthDownTan, DepthLeftTan, DepthRightTan);
+
+		// 2. The headset may have moved in between capturing the environment depth and rendering the frame. We
+		//    can only account for rotation of the headset, not translation.
+		auto DepthOrientation = InverseBaseOrientation * ToFQuat(DepthFrameDesc->views[i].pose.orientation);
+		if (!DepthOrientation.IsNormalized())
+		{
+			PXR_LOGE(PxrUnreal, "DepthOrientation is not normalized %f %f %f %f",
+				DepthOrientation.X, DepthOrientation.Y, DepthOrientation.Z, DepthOrientation.W);
+			DepthOrientation.Normalize();
+		}
+		const auto ScreenToDepthQuat = ScreenOrientation.Inverse() * DepthOrientation;
+
+		FMatrix44f R_DepthCamera_ScreenCamera = FQuat4f(ScreenToDepthQuat.Y, ScreenToDepthQuat.Z,
+			ScreenToDepthQuat.X, ScreenToDepthQuat.W)
+													.GetNormalized()
+													.ToMatrix();
+
+		ScreenToDepth[i] = T_DepthNormCoord_DepthCamera * R_DepthCamera_ScreenCamera * T_ScreenCamera_ScreenNormCoord;
+	}
+
+	return true;
+}
+
+TArray<FTextureRHIRef> FPICOXRHMD::CreateEnvironmentDepthSwapChainTextures_RenderThread(uint32 InSizeX, uint32 InSizeY, EPixelFormat InFormat,uint32 InNumMips, uint32 InNumSamples,ERHIResourceType InResourceType,
+	const TArray<FExternalTextureHandle>& InTextures, ETextureCreateFlags InTexCreateFlags, const TCHAR* DebugName) const
+{
+	check(IsInRenderingThread());
+		
+	TArray<FTextureRHIRef> RHITextureSwapChain;
+	for (int32 TextureIndex = 0; TextureIndex < InTextures.Num(); ++TextureIndex)
+	{
+		FTextureRHIRef TexRef = GetCustomRenderBridge()->CreateTexture_RenderThread(InResourceType,InTextures[TextureIndex],InFormat,InSizeX, InSizeY, InNumMips, InNumSamples,
+			InTexCreateFlags,0);
+		
+		FString TexName = FString::Printf(TEXT("%s (%d/%d)"), DebugName, TextureIndex, InTextures.Num());
+		TexRef->SetName(*TexName);
+		RHIBindDebugLabelName(TexRef, *TexName);
+
+		RHITextureSwapChain.Add(TexRef);
+	}
+	return RHITextureSwapChain;
+}
+#endif
 
 void FPICOXRHMD::OnSeeThroughStateChange(int SeeThroughState)
 {
@@ -1940,17 +2286,12 @@ void FPICOXRHMD::OnFoveationLevelChange(int32 NewFoveationLevel)
 void FPICOXRHMD::OnFrustumStateChange()
 {
 #if PLATFORM_ANDROID
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_LEFT, &LeftFrustum.FovLeft, &LeftFrustum.FovRight, &LeftFrustum.FovUp, &LeftFrustum.FovDown,&LeftFrustum.Near,&LeftFrustum.Far);
-	FPICOXRHMDModule::GetPluginWrapper().GetFrustum(PXR_EYE_RIGHT, &RightFrustum.FovLeft, &RightFrustum.FovRight, &RightFrustum.FovUp, &RightFrustum.FovDown,&RightFrustum.Near,&RightFrustum.Far);
- 	LeftFrustum.FovLeft = FMath::Atan(LeftFrustum.FovLeft/LeftFrustum.Near);
- 	LeftFrustum.FovRight = FMath::Atan(LeftFrustum.FovRight/LeftFrustum.Near);
- 	LeftFrustum.FovUp = FMath::Atan(LeftFrustum.FovUp/LeftFrustum.Near);
- 	LeftFrustum.FovDown = FMath::Atan(LeftFrustum.FovDown/LeftFrustum.Near);
-
- 	RightFrustum.FovLeft = FMath::Atan(RightFrustum.FovLeft/RightFrustum.Near);
- 	RightFrustum.FovRight = FMath::Atan(RightFrustum.FovRight/RightFrustum.Near);
- 	RightFrustum.FovUp = FMath::Atan(RightFrustum.FovUp/RightFrustum.Near);
- 	RightFrustum.FovDown = FMath::Atan(RightFrustum.FovDown/RightFrustum.Near);
+	const bool bHasLeftFrustum = UpdateFrustumFromPlugin(PXR_EYE_LEFT, LeftFrustum);
+	const bool bHasRightFrustum = UpdateFrustumFromPlugin(PXR_EYE_RIGHT, RightFrustum);
+	if (!UpdateFrustumFromPlugin(PXR_EYE_BOTH, BothFrustum) && bHasLeftFrustum && bHasRightFrustum)
+	{
+		BothFrustum = MakeFallbackBothFrustum(LeftFrustum, RightFrustum);
+	}
 #endif
 }
 
@@ -1984,7 +2325,7 @@ bool FPICOXRHMD::InitializeSession()
 
 	{
 		//SetAppEngineInfo2
-		FString UnrealSDKVersion = "UE5_3.3.2";
+ 		FString UnrealSDKVersion = "UE5_6.0.0";
 		FString UnrealVersion = FString::FromInt(ENGINE_MINOR_VERSION);
 		UnrealSDKVersion = UnrealSDKVersion + UnrealVersion;
 		PXR_LOGI(PxrUnreal, "%s,xrVersion:%s", PLATFORM_CHAR(*FEngineVersion::Current().ToString()), PLATFORM_CHAR(*UnrealSDKVersion));
@@ -2398,7 +2739,6 @@ void FPICOXRHMD::EnableContentProtect(bool bEnable)
 
 void FPICOXRHMD::ClearTexture_RHIThread(FRHITexture* SrcTexture)
 {
-
 	if (RHIString == TEXT("Vulkan"))
 	{
 		UE_LOG(LogHMD,Log,TEXT("PICO XR Vulkan, Cannot Clear Texture"));
@@ -2682,7 +3022,31 @@ bool FPICOXRHMD::AllocateShadingRateTexture(uint32 Index, uint32 RenderSizeX, ui
     }
     return false;
 }
+#ifdef PICO_CUSTOM_ENGINE
+bool FPICOXRHMD::FindEnvironmentDepthTexture_RenderThread(FTextureRHIRef& OutTexture, FTextureRHIRef& OutMinMaxTexture, FVector2f& OutDepthFactors,
+	FMatrix44f OutScreenToDepthMatrices[2], FMatrix44f OutDepthViewProjMatrices[2])
+{
+	check(IsInRenderingThread());
 
+	if (EnvironmentDepthProvider == 0 || !bEnvironmentDepthRunning)
+	{
+		return false;
+	}
+
+	int SwapchainIndex = 0;
+	if (ComputeEnvironmentDepthParameters_RenderThread(OutDepthFactors, OutScreenToDepthMatrices, OutDepthViewProjMatrices, SwapchainIndex))
+	{
+		if (SwapchainIndex >= EnvironmentDepthSwapchain.Num())
+		{
+			return false;
+		}
+		OutTexture = EnvironmentDepthSwapchain[SwapchainIndex];
+		OutMinMaxTexture = EnvironmentDepthMinMaxTexture;
+		return true;
+	}
+	return false;
+}
+#endif
 void FPICOXRHMD::CalculateRenderTargetSize(const class FViewport& Viewport, uint32& InOutSizeX, uint32& InOutSizeY)
 {
 	if (!GameSettings->IsStereoEnabled())
@@ -2975,6 +3339,245 @@ bool FPICOXRHMD::SetCurrentCoordinateType(EPICOXRCoordinateType InCoordinateType
 	GameSettings->CoordinateType=InCoordinateType;
 	return true;
 }
+#ifdef PICO_CUSTOM_ENGINE
+bool FPICOXRHMD::LauncheEnvironmentDepthProvider()
+{
+	if (GWorld)
+	{
+		GWorld->Scene->SetEnableXRPassthroughSoftOcclusions(true);
+	}
+	
+	ExecuteOnRenderThread_DoNotWait([this]() {
+		if (!EnvironmentDepthSwapchain.IsEmpty())
+		{
+			PXR_LOGW(PxrUnreal, "Environment Depth is already started. Ignoring request.");
+			return;
+		}
+
+		if (!InitializeEnvironmentDepth_RenderThread())
+		{
+			PXR_LOGE(PxrUnreal, "Failed to initialize env depth");
+			return;
+		}
+
+		TArray<FExternalTextureHandle> NativeDepthTextures;
+		{
+			FScopeLock ScopeLock(&EnvironmentDepthLock);
+			if (EnvironmentDepthTextures.IsEmpty())
+			{
+				PXR_LOGE(PxrUnreal, "Failed to get depth texture handles, array is empty.");
+				return;
+			}
+			NativeDepthTextures = EnvironmentDepthTextures; 
+		}
+		
+		const uint32 SizeX = EnvironmentDepthSwapchainState.width;
+		const uint32 SizeY = EnvironmentDepthSwapchainState.height;
+		constexpr EPixelFormat DepthFormat = PF_ShadowDepth;
+		constexpr uint32 NumMips = 1;
+		constexpr uint32 NumSamples = 1;
+		constexpr ETextureCreateFlags DepthTexCreateFlags = TexCreate_ShaderResource | TexCreate_InputAttachmentRead;
+		constexpr ERHIResourceType ResourceType = RRT_Texture2DArray;
+
+		EnvironmentDepthSwapchain.Empty();
+		
+		EnvironmentDepthSwapchain = CreateEnvironmentDepthSwapChainTextures_RenderThread(SizeX, SizeY, DepthFormat, NumMips,NumSamples, ResourceType,
+			NativeDepthTextures, DepthTexCreateFlags,*FString::Printf(TEXT("PICO Environment Depth Swapchain")));
+
+		if (EnvironmentDepthSwapchain.IsEmpty())
+		{
+			PXR_LOGE(PxrUnreal, "Failed to create RHI texture swapchain for Environment Depth.");
+			return;
+		}
+		
+		ETextureCreateFlags MinMaxTextureCreateFlags = TexCreate_ShaderResource | TexCreate_RenderTargetable;
+		FRHITextureCreateDesc MinMaxTextureDesc = FRHITextureCreateDesc::Create(TEXT("EnvironmentDepthMinMaxTexture"),
+			ETextureDimension::Texture2DArray)
+													  .SetExtent(SizeX, SizeY)
+													  .SetFormat(PF_FloatRGBA)
+													  .SetNumMips(NumMips)
+													  .SetNumSamples(NumSamples)
+													  .SetClearValue(FClearValueBinding::None);
+		MinMaxTextureDesc.SetArraySize(2);
+		MinMaxTextureCreateFlags |= TexCreate_TargetArraySlicesIndependently;
+		MinMaxTextureDesc.SetFlags(MinMaxTextureCreateFlags);
+		EnvironmentDepthMinMaxTexture = RHICreateTexture(MinMaxTextureDesc);
+
+		if (!EnvironmentDepthMinMaxTexture.IsValid())
+		{
+			PXR_LOGE(PxrUnreal, "Failed to create MinMax texture for Environment Depth.");
+			EnvironmentDepthSwapchain.Empty();
+			return;
+		}
+		
+		if (!StartEnvironmentDepth_RenderThread())
+		{
+			PXR_LOGE(PxrUnreal, "Failed to start the Environment Depth provider.");
+			EnvironmentDepthSwapchain.Empty();
+			EnvironmentDepthMinMaxTexture = nullptr;
+			return;
+		}
+		
+	});
+	return true;
+}
+
+bool FPICOXRHMD::CloseEnvironmentDepthProvider()
+{
+	if (GWorld)
+	{
+		GWorld->Scene->SetEnableXRPassthroughSoftOcclusions(false);
+	}
+	
+	ExecuteOnRenderThread_DoNotWait([this]() {
+			if (!EnvironmentDepthSwapchain.IsEmpty())
+			{
+				EnvironmentDepthSwapchain.Empty();
+			}
+			if (StopEnvironmentDepth_RenderThread())
+			{
+				DestroyEnvironmentDepth_RenderThread();
+			}
+			EnvironmentDepthMinMaxTexture = nullptr;
+			PrevEnvironmentDepthMinMaxSwapchainIndex = -1;
+		});
+	return true;
+}
+
+bool FPICOXRHMD::InitializeEnvironmentDepth_RenderThread()
+{
+	if (!bExtEnvironmentDepthAvailable||EnvironmentDepthProvider != 0)
+	{
+		return false;
+	}
+
+	PxrEnvironmentDepthProviderCreateInfo EnvironmentDepthProviderCreateInfo{ PXR_TYPE_ENVIRONMENT_DEPTH_PROVIDER_CREATE_INFO_META };
+
+	FPICOXRHMDModule::GetPluginWrapper().CreateEnvironmentDepthProvider( &EnvironmentDepthProviderCreateInfo, &EnvironmentDepthProvider);
+
+	PXR_LOGD(PxrUnreal, "Initialize env EnvironmentDepthProvider:%llu",EnvironmentDepthProvider);
+	
+	PxrEnvironmentDepthSwapchainCreateInfo EnvironmentDepthSwapchainCreateInfo {PXR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_CREATE_INFO_META};
+
+	FPICOXRHMDModule::GetPluginWrapper().CreateEnvironmentDepthSwapchain(EnvironmentDepthProvider,&EnvironmentDepthSwapchainCreateInfo,&EnvironmentDepthSwapchainHandle);
+	
+	FPICOXRHMDModule::GetPluginWrapper().GetEnvironmentDepthSwapchainState(EnvironmentDepthSwapchainHandle,&EnvironmentDepthSwapchainState);
+	
+	PXR_LOGD(PxrUnreal, "Initialize env depth: swapchain size=%dx%d",EnvironmentDepthSwapchainState.width, EnvironmentDepthSwapchainState.height);
+	
+	uint32 ImageCount = 0;
+	FPICOXRHMDModule::GetPluginWrapper().EnumerateEnvironmentDepthSwapchainImages(EnvironmentDepthSwapchainHandle,0,&ImageCount,nullptr);
+	
+	PXR_LOGD(PxrUnreal, "Initialize env ImageCount:%d",ImageCount);
+
+	TArray<uint64> DepthSwapChainImages;
+	DepthSwapChainImages.SetNum(ImageCount);
+	
+	FPICOXRHMDModule::GetPluginWrapper().EnumerateEnvironmentDepthSwapchainImages(EnvironmentDepthSwapchainHandle,ImageCount,&ImageCount,
+		reinterpret_cast<uint64_t*>(DepthSwapChainImages.GetData()));
+	
+	{
+		FScopeLock ScopeLock(&EnvironmentDepthLock);
+		EnvironmentDepthTextures.Empty();
+		for (auto DepthSwapChainImage : DepthSwapChainImages)
+		{
+			PXR_LOGD(PxrUnreal, "Initialize env DepthSwapChainImage:%llu",DepthSwapChainImage);
+			EnvironmentDepthTextures.Push(DepthSwapChainImage);
+		}
+	}
+
+	return true;
+}
+
+bool FPICOXRHMD::DestroyEnvironmentDepth_RenderThread()
+{
+	if (!bExtEnvironmentDepthAvailable||EnvironmentDepthProvider == 0)
+	{
+		return false;
+	}
+
+	{
+		FScopeLock ScopeLock(&EnvironmentDepthLock);
+		EnvironmentDepthTextures.Empty();
+	}
+
+	FPICOXRHMDModule::GetPluginWrapper().DestroyEnvironmentDepthSwapchain(EnvironmentDepthSwapchainHandle);
+	EnvironmentDepthSwapchainHandle = 0;
+
+	FPICOXRHMDModule::GetPluginWrapper().DestroyEnvironmentDepthProvider(EnvironmentDepthProvider);
+	EnvironmentDepthProvider = 0;
+
+	return true;
+}
+
+bool FPICOXRHMD::StartEnvironmentDepth_RenderThread()
+{
+	if (EnvironmentDepthProvider == 0 || bEnvironmentDepthRunning)
+	{
+		return false;
+	}
+	
+	bool bResult=PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().StartEnvironmentDepthProvider(EnvironmentDepthProvider));
+	bEnvironmentDepthRunning = bResult;
+	
+	return bResult;
+}
+
+bool FPICOXRHMD::StopEnvironmentDepth_RenderThread()
+{
+	if (EnvironmentDepthProvider == 0 || !bEnvironmentDepthRunning)
+	{
+		return false;
+	}
+
+	bool bResult=PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().StopEnvironmentDepthProvider(EnvironmentDepthProvider));
+	if (bResult)
+	{
+		bEnvironmentDepthRunning = false;
+	}
+	return bResult;
+}
+
+bool FPICOXRHMD::AcquireEnvironmentDepthTexture_RHIThread(int64 PredictedDisplayTime)
+{
+	if (EnvironmentDepthProvider == 0 || !bEnvironmentDepthRunning)
+	{
+		return false;
+	}
+
+	PxrEnvironmentDepthImageAcquireInfo AcquireInfo={ PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_ACQUIRE_INFO_META };
+	AcquireInfo.displayTime = PredictedDisplayTime ? PredictedDisplayTime : 0;
+
+	PxrEnvironmentDepthImage DepthImage={ PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_META };
+	DepthImage.views[0].type = PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_VIEW_META;
+	DepthImage.views[1].type = PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_VIEW_META;
+	int Result = FPICOXRHMDModule::GetPluginWrapper().AcquireEnvironmentDepthImage(EnvironmentDepthProvider, &AcquireInfo, &DepthImage);
+	FScopeLock ScopeLock(&EnvironmentDepthLock);
+	if (!PXRP_SUCCESS(Result))
+	{
+		PXR_LOGE(PxrUnreal, "Can not set environment depth frame desc: %d", Result);
+		EnvironmentDepthFrameDesc.Reset();
+		return false;
+	}
+	else
+	{
+		EnvironmentDepthFrameDesc = DepthImage;
+	}
+
+	return true;
+}
+
+bool FPICOXRHMD::GetEnvironmentDepthFrameDesc_RenderThread(TOptional<PxrEnvironmentDepthImage>& OutEnvironmentDepthFrameDesc)
+{
+	if (EnvironmentDepthProvider == 0 || !bEnvironmentDepthRunning)
+	{
+		return false;
+	}
+	OutEnvironmentDepthFrameDesc = EnvironmentDepthFrameDesc;
+	return true;
+}
+#endif
+
 #ifdef PICO_CUSTOM_ENGINE
 bool FPICOXRHMD::IsSupportsSpaceWarp() const
 {
@@ -3325,6 +3928,10 @@ void FPICOXRHMD::OnRHIFrameBegin_RenderThread()
 						 }
 					 }
 				 }
+#endif
+		 	
+#ifdef PICO_CUSTOM_ENGINE
+		 		PostBeginFrame_RHIThread();
 #endif
 			 });
 

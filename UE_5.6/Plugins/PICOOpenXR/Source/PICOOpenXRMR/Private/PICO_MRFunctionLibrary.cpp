@@ -1,19 +1,23 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_MRFunctionLibrary.h"
-#include "MRMeshComponent.h"
 #include "PICOOpenXRRuntimeSettings.h"
+#include "PICO_LightEstimation.h"
 #include "PICO_SceneCapture.h"
 #include "PICO_SpatialAnchor.h"
 #include "PICO_SpatialMesh.h"
+#include "PICO_SpatialPlane.h"
+#include "MRMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
+#include "ProceduralMeshComponent.h"
 
 
+struct FProcMeshTangent;
 UMRDelegateManagerPICO* UMRFunctionLibraryPICO::PICODelegateManager = nullptr;
 UMRDelegateManagerPICO* UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()
 {
@@ -42,7 +46,7 @@ bool UMRFunctionLibraryPICO::GetAnchorEntityUuidPICO(AActor* BoundActor, FSpatia
 	
 }
 
-bool UMRFunctionLibraryPICO::GetAnchorEntityUuidByComponentPICO(UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult)
+bool UMRFunctionLibraryPICO::GetAnchorEntityUuidByComponentPICO(const UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult)
 {
 	if (IsValid(AnchorComponent) && AnchorComponent->IsAnchorValid())
 	{
@@ -175,6 +179,11 @@ bool UMRFunctionLibraryPICO::CloseSpatialMeshScanningPICO(EResultPICO& OutResult
 	return FSpatialMeshExtensionPICO::GetInstance()->StopProvider(OutResult);
 }
 
+bool UMRFunctionLibraryPICO::CloseSpatialPlaneScanningPICO(EResultPICO& OutResult)
+{
+	return FSpatialPlaneExtensionPICO::GetInstance()->StopProvider(OutResult);
+}
+
 bool UMRFunctionLibraryPICO::ChangeSpatialMeshLodSettingPICO(ESpatialMeshLodPICO SpatialMeshLod,EResultPICO& OutResult)
 {
 	bool bResult=false;
@@ -233,6 +242,16 @@ EMRStatePICO UMRFunctionLibraryPICO::GetSceneCaptureServiceStatePICO()
 	return FSceneCaptureExtensionPICO::GetInstance()->GetSenseDataProviderState();
 }
 
+EMRStatePICO UMRFunctionLibraryPICO::GetSpatialPlaneScanningStatePICO()
+{
+	return FSpatialPlaneExtensionPICO::GetInstance()->GetSenseDataProviderState();
+}
+
+EMRStatePICO UMRFunctionLibraryPICO::GetLightEstimationServiceStatePICO()
+{
+	return FLightEstimationExtensionPICO::GetInstance()->GetSenseDataProviderState();
+}
+
 void UMRFunctionLibraryPICO::ResetSpatialMeshInfosStatePICO()
 {
 	FSpatialMeshExtensionPICO::GetInstance()->ClearMeshProviderBuffer();
@@ -248,6 +267,10 @@ bool UMRFunctionLibraryPICO::CloseSceneCaptureServicePICO(EResultPICO& OutResult
 	return FSceneCaptureExtensionPICO::GetInstance()->StopProvider(OutResult);
 }
 
+bool UMRFunctionLibraryPICO::CloseLightEstimationServicePICO(EResultPICO& OutResult)
+{
+	return FLightEstimationExtensionPICO::GetInstance()->StopProvider(OutResult);
+}
 
 bool UMRFunctionLibraryPICO::DestroyAnchorByComponentPICO(UAnchorComponentPICO* AnchorComponent,EResultPICO& OutResult)
 {
@@ -284,8 +307,13 @@ bool UMRFunctionLibraryPICO::DestroyAnchorByActorPICO(AActor* BoundActor,EResult
 
 bool UMRFunctionLibraryPICO::CreateSceneBoundingPolygonPICO(AActor* BoundActor,bool bNeverCreateCollision,bool bFlipPolygon,bool UseWireframe, const FTransform& Transform, const TArray<FVector>& BoundaryVertices,UMaterialInterface* DefaultMeshMaterial)
 {
-	auto MRMeshComponent = NewObject<UMRMeshComponent>(BoundActor);
-
+	auto MRMeshComponent = NewObject<UProceduralMeshComponent>(BoundActor);
+	TArray<int32> Indices;
+	TArray<FVector> Normals;
+	TArray<FLinearColor> VertexColors;
+	TArray<FProcMeshTangent> Tangents;
+	TArray<FVector2D> UV0;
+	
 	if (!IsValid(BoundActor)||!BoundaryVertices.Num()||!DefaultMeshMaterial)
 	{
 		return false;
@@ -294,16 +322,13 @@ bool UMRFunctionLibraryPICO::CreateSceneBoundingPolygonPICO(AActor* BoundActor,b
 	MRMeshComponent->SetUsingAbsoluteLocation(true);
 	MRMeshComponent->SetUsingAbsoluteRotation(true);
 	MRMeshComponent->SetUsingAbsoluteScale(true);
-		
-	MRMeshComponent->SetEnableMeshOcclusion(false);
-	MRMeshComponent->SetUseWireframe(UseWireframe);
-	MRMeshComponent->SetNeverCreateCollisionMesh(bNeverCreateCollision);
-	MRMeshComponent->SetEnableNavMesh(false);
-		
-	if (DefaultMeshMaterial)
+	if (UseWireframe&&GEngine->WireframeMaterial)
+	{
+		MRMeshComponent->SetMaterial(0, GEngine->WireframeMaterial);
+	}
+	else
 	{
 		MRMeshComponent->SetMaterial(0, DefaultMeshMaterial);
-		MRMeshComponent->SetWireframeMaterial(DefaultMeshMaterial);
 	}
 
 	MRMeshComponent->SetupAttachment(BoundActor->GetRootComponent());
@@ -311,7 +336,6 @@ bool UMRFunctionLibraryPICO::CreateSceneBoundingPolygonPICO(AActor* BoundActor,b
 	
 	auto Vertices = BoundaryVertices;
 	const auto NumPolygons = Vertices.Num();
-	TArray<MRMESH_INDEX_TYPE> Indices;
 	Indices.Reset(3 * NumPolygons);
 	if (bFlipPolygon)
 	{
@@ -331,9 +355,102 @@ bool UMRFunctionLibraryPICO::CreateSceneBoundingPolygonPICO(AActor* BoundActor,b
 			Indices.Add((Index + 2) % NumPolygons);
 		}
 	}
-
 			
-	MRMeshComponent->UpdateMesh(Transform.GetLocation(), Transform.GetRotation(), Transform.GetScale3D(), Vertices, Indices);
+	MRMeshComponent->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, VertexColors, Tangents, !bNeverCreateCollision);
+	MRMeshComponent->SetWorldLocation(Transform.GetLocation());
+	MRMeshComponent->SetWorldRotation(Transform.GetRotation());
+	return true;
+}
+
+bool UMRFunctionLibraryPICO::CreateSceneBoundingPolygonWithUVAdjustment(AActor* BoundActor, bool bNeverCreateCollision, bool bFlipPolygon, const FUVAdjustmentPICO& UVAdjustment, const FTransform& Transform, const TArray<FVector>& BoundaryVertices, UMaterialInterface* DefaultMeshMaterial,bool bUseOfflineData)
+{
+	auto MRMeshComponent = NewObject<UProceduralMeshComponent>(BoundActor);
+
+	if (!IsValid(BoundActor) || !BoundaryVertices.Num() || !DefaultMeshMaterial)
+	{
+		return false;
+	}
 	
+	MRMeshComponent->SetUsingAbsoluteLocation(true);
+	MRMeshComponent->SetUsingAbsoluteRotation(true);
+	MRMeshComponent->SetUsingAbsoluteScale(true);
+
+	MRMeshComponent->SetMaterial(0, DefaultMeshMaterial);
+	MRMeshComponent->SetupAttachment(BoundActor->GetRootComponent());
+	MRMeshComponent->RegisterComponent();
+
+	auto Vertices = BoundaryVertices;
+	const auto NumPolygons = Vertices.Num();
+	TArray<int32> Indices;
+	TArray<FVector> Normals;
+	TArray<FLinearColor> VertexColors;
+	TArray<FProcMeshTangent> Tangents;
+	TArray<FVector2D> UV0;
+	Normals.Reserve(NumPolygons);
+	UV0.Reserve(NumPolygons);
+	Indices.Reserve(3 * NumPolygons);
+	const int Index1 = bFlipPolygon ? 2 : 1;
+	const int Index2 = bFlipPolygon ? 1 : 2;
+	const FVector Normal = -FVector::XAxisVector;
+
+	for (auto Index = 0; Index < NumPolygons; ++Index)
+	{
+		Indices.Add(0);
+		Indices.Add((Index + Index1) % NumPolygons);
+		Indices.Add((Index + Index2) % NumPolygons);
+		Normals.Push(Normal);
+	}
+
+	// Calculate UV coordinates
+	// First, find the bounding box of the vertices
+	FVector MinBounds(FLT_MAX, FLT_MAX, FLT_MAX);
+	FVector MaxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	for (const auto& Vertex : Vertices)
+	{
+		// Manually update the minimum bounds
+		if (Vertex.X < MinBounds.X) MinBounds.X = Vertex.X;
+		if (Vertex.Y < MinBounds.Y) MinBounds.Y = Vertex.Y;
+		if (Vertex.Z < MinBounds.Z) MinBounds.Z = Vertex.Z;
+
+		// Manually update the maximum bounds
+		if (Vertex.X > MaxBounds.X) MaxBounds.X = Vertex.X;
+		if (Vertex.Y > MaxBounds.Y) MaxBounds.Y = Vertex.Y;
+		if (Vertex.Z > MaxBounds.Z) MaxBounds.Z = Vertex.Z;
+	}
+
+	// Calculate the size of the bounding box
+	FVector BoundsSize = MaxBounds - MinBounds;
+
+	// Calculate UV coordinates for each vertex
+	for (const auto& Vertex : Vertices)
+	{
+		// Map the vertex position to the [0, 1] range
+		FVector2D UV;
+		if (bUseOfflineData)
+		{
+			UV.X = (Vertex.X - MinBounds.X) / BoundsSize.X;
+			UV.Y = bFlipPolygon? 1 - (Vertex.Y - MinBounds.Y) / BoundsSize.Y : (Vertex.Y - MinBounds.Y) / BoundsSize.Y;
+		}
+		else
+		{
+			UV.X = (Vertex.Y - MinBounds.Y) / BoundsSize.Y;
+			UV.Y = bFlipPolygon? 1 - (Vertex.Z - MinBounds.Z) / BoundsSize.Z : (Vertex.Z - MinBounds.Z) / BoundsSize.Z;
+		}
+
+		float rotationInRadians = FMath::DegreesToRadians(UVAdjustment.Rotation);
+		float cosAngle = FMath::Cos(rotationInRadians);
+		float sinAngle = FMath::Sin(rotationInRadians);
+		FVector2D rotatedUV;
+		rotatedUV.X = UV.X * cosAngle - UV.Y * sinAngle;
+		rotatedUV.Y = UV.X * sinAngle + UV.Y * cosAngle;
+		
+		UV = rotatedUV * UVAdjustment.Scale + UVAdjustment.Offset;
+		UV0.Add(UV);
+	}
+
+	MRMeshComponent->CreateMeshSection_LinearColor(0, Vertices, Indices, Normals, UV0, VertexColors, Tangents, !bNeverCreateCollision);
+	MRMeshComponent->SetWorldLocation(Transform.GetLocation());
+	MRMeshComponent->SetWorldRotation(Transform.GetRotation());
+
 	return true;
 }

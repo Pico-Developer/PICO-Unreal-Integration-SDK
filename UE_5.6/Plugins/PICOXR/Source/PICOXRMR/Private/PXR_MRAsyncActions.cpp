@@ -92,6 +92,123 @@ void UPICORequestSceneCaptures_AsyncAction::HandleLoadSceneAnchorEntityComplete(
 	SetReadyToDestroy();
 }
 
+void UPICOLaunchLightEstimationService_AsyncAction::Activate()
+{
+	Super::Activate();
+	if(!PXR_LightEstimationProvider::GetInstance()->IsHandleValid())
+	{
+		const UPICOXRSettings* Settings = GetDefault<UPICOXRSettings>();
+
+		if (Settings->bLightEstimation)
+		{
+			FPICOSenseDataProviderCreateInfoLightEstimation cFPICOSenseDataProviderCreateInfoLightEstimation = {};
+			cFPICOSenseDataProviderCreateInfoLightEstimation.Resolution=Settings->LightEstimationResolution;
+			
+			EPICOResult OutResult=EPICOResult::PXR_Error_Unknow;
+			PXR_LightEstimationProvider::GetInstance()->CreateProvider(cFPICOSenseDataProviderCreateInfoLightEstimation);
+		}
+	}
+
+	EPICOResult Result=EPICOResult::PXR_Error_Unknow;
+	const bool bStarted = FPICOProviderManager::PXR_StartSenseDataProviderAsync
+	(
+		FPICOPollFutureDelegate::CreateUObject(this,
+		&UPICOLaunchLightEstimationService_AsyncAction::HandleLaunchLightEstimationServiceComplete)
+		, EPICOProviderType::Pico_Provider_Light_Estimation,Result	
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+UPICOLaunchLightEstimationService_AsyncAction* UPICOLaunchLightEstimationService_AsyncAction::PXR_LaunchLightEstimationService_Async()
+{
+	UPICOLaunchLightEstimationService_AsyncAction* Action = NewObject<UPICOLaunchLightEstimationService_AsyncAction>();
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICOLaunchLightEstimationService_AsyncAction::HandleLaunchLightEstimationServiceComplete(
+	const FPICOSpatialHandle& FutureHandle)
+{
+	FPICOSenseDataProviderStartCompletion SenseDataProviderStartCompletion;
+	EPICOResult OutResult=EPICOResult::PXR_Error_Unknow;
+
+	if(PXR_LightEstimationProvider::GetInstance()->StartSenseDataProviderComplete(FutureHandle, SenseDataProviderStartCompletion,OutResult))
+	{
+		if (PXR_SUCCESS(SenseDataProviderStartCompletion.FutureResult))
+		{
+			OnSuccess.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+		else
+		{
+			OnFailure.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+
+	SetReadyToDestroy();
+}
+
+void UPICORequestLightEstimation_AsyncAction::Activate()
+{
+	EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+	
+	EnvironmentCaptureTexture = NewObject<UPICOLightEstimationTexture>(this);
+
+	const bool bStarted = PXR_LightEstimationProvider::GetInstance()->RequestLightEstimation
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &UPICORequestLightEstimation_AsyncAction::HandleRequestLightEstimationComplete),
+		OutResult
+	);
+	
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+}
+
+UPICORequestLightEstimation_AsyncAction* UPICORequestLightEstimation_AsyncAction::PXR_RequestLightEstimation_Async()
+{
+	UPICORequestLightEstimation_AsyncAction* Action = NewObject<UPICORequestLightEstimation_AsyncAction>();
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICORequestLightEstimation_AsyncAction::HandleRequestLightEstimationComplete(const FPICOSpatialHandle& FutureHandle)
+{
+	PXR_LOGV(PxrMR, "HandleRequestLightEstimationComplete!!!");
+	
+	EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+	if (PXR_LightEstimationProvider::GetInstance()->GetLightEstimationInfo(FutureHandle,EnvironmentCaptureTexture,SourceCubemapAngle,OutResult))
+	{
+		// Create the texture
+		if (EnvironmentCaptureTexture)
+		{
+			OnSuccess.Broadcast(OutResult,EnvironmentCaptureTexture,SourceCubemapAngle);
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+	
+	SetReadyToDestroy();
+}
+
+
 UPICORequestSpatialMesh_AsyncAction* UPICORequestSpatialMesh_AsyncAction::PXR_RequestSpatialMeshInfos_Async()
 {
 	UPICORequestSpatialMesh_AsyncAction* Action = NewObject<UPICORequestSpatialMesh_AsyncAction>();
@@ -106,7 +223,7 @@ void UPICORequestSpatialMesh_AsyncAction::HandleRequestSpatialMeshComplete(const
 	FVector BaseOffsetInMeters = FPICOProviderManager::GetBaseOffsetInMeters();
 	float WorldToMetersScale = FPICOProviderManager::GetWorldToMetersScale();
 	FTransform TrackingToWorld=FPICOProviderManager::GetTrackingToWorldTransform();
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
+	AsyncTask(ENamedThreads::GameThread, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
 	{
 		TArray<FPICOSpatialMeshInfo> MeshInfos;
 		TSet<FPICOSpatialUUID> NeedDeleteEntitySet;
@@ -192,6 +309,116 @@ void UPICOLaunchSpatialMeshScanning_AsyncAction::HandleLaunchMeshScanningComplet
 
 	SetReadyToDestroy();
 }
+
+
+UPICORequestSpatialPlane_AsyncAction* UPICORequestSpatialPlane_AsyncAction::PXR_RequestSpatialPlaneInfos_Async()
+{
+	UPICORequestSpatialPlane_AsyncAction* Action = NewObject<UPICORequestSpatialPlane_AsyncAction>();
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICORequestSpatialPlane_AsyncAction::HandleRequestSpatialPlaneComplete(const FPICOSpatialHandle& FutureHandle)
+{
+	FQuat BaseOrientation = FPICOProviderManager::GetBaseOrientation();
+	FVector BaseOffsetInMeters = FPICOProviderManager::GetBaseOffsetInMeters();
+	float WorldToMetersScale = FPICOProviderManager::GetWorldToMetersScale();
+	FTransform TrackingToWorld=FPICOProviderManager::GetTrackingToWorldTransform();
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
+	{
+		TArray<FPICOSpatialPlaneInfo> PlaneInfos;
+		TSet<FPICOSpatialUUID> NeedDeleteEntitySet;
+		EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+		if (PXR_PlaneProvider::GetInstance()->GetSpatialTrianglePlaneInfos(FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,PlaneInfos,OutResult))
+		{
+			OnSuccess.Broadcast(OutResult, PlaneInfos);
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+		SetReadyToDestroy();
+	});
+}
+
+void UPICOLaunchSpatialPlaneScanning_AsyncAction::Activate()
+{
+	if(!PXR_PlaneProvider::GetInstance()->IsHandleValid())
+	{
+		const UPICOXRSettings* Settings = GetDefault<UPICOXRSettings>();
+
+		if (Settings->bEnablePlane)
+		{
+			FPICOSenseDataProviderCreateInfoPlane cFPICOSenseDataProviderCreateInfoPlane = {};
+			
+			EPICOResult OutResult=EPICOResult::PXR_Error_Unknow;
+			PXR_PlaneProvider::GetInstance()->CreateProvider(cFPICOSenseDataProviderCreateInfoPlane);
+		}
+	}
+
+	EPICOResult Result=EPICOResult::PXR_Error_Unknow;
+	const bool bStarted = FPICOProviderManager::PXR_StartSenseDataProviderAsync
+	(
+		FPICOPollFutureDelegate::CreateUObject(this,
+		&UPICOLaunchSpatialPlaneScanning_AsyncAction::HandleLaunchPlaneScanningComplete)
+		, EPICOProviderType::Pico_Provider_Plane,Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+UPICOLaunchSpatialPlaneScanning_AsyncAction* UPICOLaunchSpatialPlaneScanning_AsyncAction::PXR_LaunchSpatialPlaneScanning_Async()
+{
+	UPICOLaunchSpatialPlaneScanning_AsyncAction* Action = NewObject<UPICOLaunchSpatialPlaneScanning_AsyncAction>();
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICOLaunchSpatialPlaneScanning_AsyncAction::HandleLaunchPlaneScanningComplete(const FPICOSpatialHandle& FutureHandle)
+{
+	FPICOSenseDataProviderStartCompletion SenseDataProviderStartCompletion;
+	EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+
+	if (PXR_PlaneProvider::GetInstance()->StartSenseDataProviderComplete(FutureHandle, SenseDataProviderStartCompletion,OutResult))
+	{
+		if (PXR_SUCCESS(SenseDataProviderStartCompletion.FutureResult))
+		{
+			OnSuccess.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+		else
+		{
+			OnFailure.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+	
+	SetReadyToDestroy();
+}
+
+void UPICORequestSpatialPlane_AsyncAction::Activate()
+{
+	EPICOResult Result = EPICOResult::PXR_Error_Unknow;
+
+	const bool bStarted = PXR_PlaneProvider::GetInstance()->RequestSpatialTrianglePlane
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &UPICORequestSpatialPlane_AsyncAction::HandleRequestSpatialPlaneComplete),Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
 
 void UPICOLaunchSpatialAnchorService_AsyncAction::Activate()
 {

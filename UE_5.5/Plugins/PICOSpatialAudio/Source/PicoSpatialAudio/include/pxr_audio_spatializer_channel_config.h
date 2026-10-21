@@ -53,7 +53,6 @@ typedef enum {
     PASP_AMBIX = 1,
     PASP_AMBIX_WITH_HEADLOCK = 2,
     PASP_FUMA = 3,
-    PASP_TBE = 4,
 } PxrAudioSpatializer_ChannelConfig;
 
 typedef uint32_t PxrAudioSpatializer_ChannelMask;
@@ -229,9 +228,5 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 
 /// Pico Spatial Audio Fuma Channel Mask
 #define PASP_FUMA_ORDER_1 (1)
-
-/// Pico Spatial Audio TBE Channel Mask
-#define PASP_TBE_8 (1)
-#define PASP_TBE_8_2 (2)
 
 #endif  //  PXR_AUDIO_SPATIALIZER_CHANNEL_CONFIG_H

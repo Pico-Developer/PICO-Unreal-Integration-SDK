@@ -25,11 +25,15 @@ public class PICOOpenXRHMD : ModuleRules
                     "XRBase",
                     "InputCore",
                     "OpenXRHMD",
+                    "Json",
+                    "JsonUtilities",
+                    "ImageWrapper",
                     "RHI",
                     "RenderCore",
                     "PICOOpenXRLoader",
                     "PICOOpenXRRuntimeSettings",
                     "ProceduralMeshComponent",
+                    "Projects"
             }
             );
 

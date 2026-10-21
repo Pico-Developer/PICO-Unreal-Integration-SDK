@@ -1,8 +1,8 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PXR_ProviderManager.h"
-
 #include "PXR_AnchorComponent.h"
 #include "PXR_HMD.h"
 #include "PXR_HMDModule.h"
@@ -260,7 +260,8 @@ bool IPXR_BaseProvider::GetSpatialEntityLocation(const FPICOSpatialHandle& Snaps
 		FPose UnrealPose;
 		ConvertPose_Private(cComponentInfo.pose, UnrealPose, BaseOrientation, BaseOffsetInMeters, WorldToMetersScale);
 
-		PXR_LOGV(PxrMR, "GetSpatialEntityLocation x:%f,y:%f,z:%f", UnrealPose.Position.X, UnrealPose.Position.Y, UnrealPose.Position.Z);
+		PXR_LOGV(PxrMR, "GetSpatialEntityLocation Position x:%f,y:%f,z:%f", UnrealPose.Position.X, UnrealPose.Position.Y, UnrealPose.Position.Z);
+		PXR_LOGV(PxrMR, "GetSpatialEntityLocation Orientation x:%f,y:%f,z:%f,w:%f", UnrealPose.Orientation.X, UnrealPose.Orientation.Y, UnrealPose.Orientation.Z, UnrealPose.Orientation.W);
 
 		Transform.SetLocation(TrackingToWorld.TransformPosition(UnrealPose.Position));
 		Transform.SetRotation(TrackingToWorld.TransformRotation(UnrealPose.Orientation));
@@ -300,6 +301,7 @@ bool IPXR_BaseProvider::GetSpatialEntitySemantic(const FPICOSpatialHandle& Snaps
 			for (auto Semantic : TempSemantics)
 			{
 				Semantics.Add(static_cast<EPICOSemanticLabel>(Semantic));
+				UE_LOG(PxrMR, Verbose, TEXT("GetSpatialEntitySemantic Semantic:%d"),Semantic);
 			}
 		}
 	}
@@ -456,6 +458,78 @@ bool IPXR_BaseProvider::GetSpatialEntityTriangleMesh(const FPICOSpatialHandle& S
 	return bResult;
 }
 
+
+bool IPXR_BaseProvider::GetSpatialEntityPlaneOrientation(const FPICOSpatialHandle& SnapshotHandle, const FPICOSpatialHandle& EntityHandle, EPICOPlaneOrientation& PlaneOrientationPICO)
+{
+	bool bResult = false;
+	PxrSpatialEntityPlaneOrientationGetInfo cComponentInfoGetInfo = {};
+	cComponentInfoGetInfo.type = PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_GET_INFO;
+	cComponentInfoGetInfo.componentType = PXR_SPATIAL_ENTITY_COMPONENT_TYPE_PLANE_ORIENTATION;
+	cComponentInfoGetInfo.entity = EntityHandle.Value;
+	PxrSpatialEntityPlaneOrientationInfo cComponentInfo = {};
+	cComponentInfo.type = PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_INFO;
+	bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().GetSpatialEntityComponentInfo(SnapshotHandle
+															, reinterpret_cast<PxrSpatialEntityComponentInfoGetInfoBaseHeader*>(&cComponentInfoGetInfo)
+															, reinterpret_cast<PxrSpatialEntityComponentInfoBaseHeader*>(&cComponentInfo)));
+	if (bResult)
+	{
+		PlaneOrientationPICO=static_cast<EPICOPlaneOrientation>(cComponentInfo.planeOrientation);
+		PXR_LOGV(PxrMR, "GetSpatialEntityPlaneOrientation:%d", PlaneOrientationPICO);
+	}
+
+	return bResult;
+}
+
+bool IPXR_BaseProvider::GetSpatialEntityLightEstimateData(const FPICOSpatialHandle& SnapshotHandle,
+	const FPICOSpatialHandle& EntityHandle, const FIntPoint& Size, UPICOLightEstimationTexture* OutEnvironmentTexture)
+{
+	bool bResult;
+	if (OutEnvironmentTexture)
+	{
+		if (GetCachedLightEstimateInfoPico().texture)
+		{
+			PXR_LOGV(PxrMR, "UpdateCachedLightEstimateInfoPico DataState:%d",GetCachedLightEstimateInfoPico().state);
+			bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().ReleaseEnvironmentTextureImage(GetCachedLightEstimateInfoPico().texture));
+			PXR_LOGV(PxrMR, "ReleaseEnvironmentTextureImage Result:%d", bResult);
+			if (!bResult)
+			{
+				PXR_LOGE(PxrMR, "ReleaseEnvironmentTextureImage failed");
+				return bResult;
+			}
+		}
+
+		InitializeCachedLightEstimateInfoPico();
+	}
+	else
+	{
+		PXR_LOGE(PxrMR, "OutEnvironmentTexture null!");
+		return false;
+	}
+	
+	PxrSpatialEntityLightEstimationGetInfoPICO xrLightEstimateGetInfoPico{
+		.type = PXR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_GET_INFO,
+		.entity = EntityHandle.Value,
+		.componentType = PXR_SPATIAL_ENTITY_COMPONENT_TYPE_LIGHT_ESTIMATION,
+	};
+	
+	PxrSpatialEntityLightEstimationInfo TempLightEstimateInfoPico = GetCachedLightEstimateInfoPico();
+	bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().GetSpatialEntityComponentInfo(SnapshotHandle
+														, reinterpret_cast<PxrSpatialEntityComponentInfoGetInfoBaseHeader*>(&xrLightEstimateGetInfoPico)
+														, reinterpret_cast<PxrSpatialEntityComponentInfoBaseHeader*>(&TempLightEstimateInfoPico)));
+
+	UpdateCachedLightEstimateInfoPico(TempLightEstimateInfoPico);
+	
+	if (bResult)
+	{
+		bResult =OutEnvironmentTexture->UpdateVulkanTextureByLightEstimateInfo(Size,GetCachedLightEstimationTextureVulkan());
+		if (!bResult)
+		{
+			PXR_LOGE(PxrMR, "UpdateCachedLightEstimateInfoPico failed!");
+		}
+	}
+	return bResult;
+}
+
 bool IPXR_BaseProvider::EnumerateSpatialEntityComponentTypes(const FPICOSpatialHandle& SnapshotHandle, const FPICOSpatialHandle& EntityHandle, TArray<EPICOSpatialEntityComponentType>& componentTypes)
 {
 	uint32_t ComponentTypeCapacityInput = 0;
@@ -478,16 +552,58 @@ bool IPXR_BaseProvider::EnumerateSpatialEntityComponentTypes(const FPICOSpatialH
 
 		for (auto ComponentTypeBD : TempComponentTypes)
 		{
-			componentTypes.Add(static_cast<EPICOSpatialEntityComponentType>(ComponentTypeBD));
+			componentTypes.Add(CastSpatialEntityComponent(ComponentTypeBD));
 		}
 	}
 
 	return bResult;
 }
 
+EPICOSpatialEntityComponentType IPXR_BaseProvider::CastSpatialEntityComponent(
+	const PxrSpatialEntityComponentType& ComponentType)
+{
+	switch (ComponentType) {
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_LOCATION:
+		return EPICOSpatialEntityComponentType::Location;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_SEMANTIC:
+		return EPICOSpatialEntityComponentType::Semantic;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_BOUNDING_BOX_2D:
+		return EPICOSpatialEntityComponentType::Boundary_2D;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_POLYGON:
+		return EPICOSpatialEntityComponentType::Polygon;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_BOUNDING_BOX_3D:
+		return EPICOSpatialEntityComponentType::Boundary_3D;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_TRIANGLE_MESH:
+		return EPICOSpatialEntityComponentType::Triangle_Mesh;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_PLANE_ORIENTATION:	
+		return EPICOSpatialEntityComponentType::Plane_Orientation;
+	case PXR_SPATIAL_ENTITY_COMPONENT_TYPE_LIGHT_ESTIMATION:
+		return EPICOSpatialEntityComponentType::LightEstimation;
+	default:
+		return EPICOSpatialEntityComponentType::Unknown;
+	}
+}
+
 EPICOProviderType IPXR_BaseProvider::GetProviderType()
 {
 	return Type;
+}
+
+void IPXR_BaseProvider::UpdateCachedLightEstimateInfoPico(const PxrSpatialEntityLightEstimationInfo& EntityLightEstimationInfo)
+{
+	CachedLightEstimateInfoPico = EntityLightEstimationInfo;
+}
+
+void IPXR_BaseProvider::InitializeCachedLightEstimateInfoPico()
+{
+	CachedLightEstimationTextureVulkan= {.type = PXR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_VULKAN};
+	PxrLightEstimationInfoBaseHeader* LightEstimationInfoBaseHeader=reinterpret_cast<PxrLightEstimationInfoBaseHeader*>(&CachedLightEstimationTextureVulkan);
+	CachedLightEstimateInfoPico= {
+		.type = PXR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_INFO,
+		.state = PXR_LIGHT_ESTIMATION_DATA_STATE_INVALID,
+		.harmonics = nullptr,
+		.texture = LightEstimationInfoBaseHeader
+	};
 }
 
 EPICOMRState IPXR_BaseProvider::GetSenseDataProviderState() const
@@ -560,6 +676,20 @@ bool FPICOProviderManager::Initialize(FPICOXRHMD* InPICOXRHMD)
 		bInitialized = PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Scene_Capture)->CreateProvider(cFPICOSenseDataProviderCreateInfoSceneCapture);
 	}
 
+	if (Settings->bEnablePlane)
+	{
+		FPICOSenseDataProviderCreateInfoPlane cFPICOSenseDataProviderCreateInfoPlane = {};
+
+		bInitialized = PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Plane)->CreateProvider(cFPICOSenseDataProviderCreateInfoPlane);
+	}
+
+	if (Settings->bLightEstimation)
+	{
+		FPICOSenseDataProviderCreateInfoLightEstimation cPICOSenseDataProviderCreateInfoLightEstimation = {};
+		cPICOSenseDataProviderCreateInfoLightEstimation.Resolution=Settings->LightEstimationResolution;
+		bInitialized = PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Light_Estimation)->CreateProvider(cPICOSenseDataProviderCreateInfoLightEstimation);
+	}
+
 	return bInitialized;
 }
 
@@ -597,6 +727,18 @@ void FPICOProviderManager::PollEvent(PxrEventDataBuffer* EventData)
 					PXR_LOGV(PxrMR, "FPICOProviderManager::SceneCaptureDataUpdated");
 				}
 				break;
+			case EPICOProviderType::Pico_Provider_Plane:
+				{
+					UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->PlaneDataUpdatedDelegate.Broadcast();
+					PXR_LOGV(PxrMR, "FPICOProviderManager::PlaneDataUpdatedDelegate");
+				}
+				break;
+			case EPICOProviderType::Pico_Provider_Light_Estimation:
+				{
+					UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->LightEstimationDataUpdatedDelegate.Broadcast();
+					PXR_LOGD(PxrMR, "FPICOProviderManager::LightEstimationDataUpdated");
+				}
+				break;
 			default: ;
 			};
 
@@ -625,6 +767,18 @@ void FPICOProviderManager::PollEvent(PxrEventDataBuffer* EventData)
 				{
 					UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->SceneCaptureServiceStateUpdatedDelegate.Broadcast(State);
 					PXR_LOGV(PxrMR, "FPICOProviderManager::SceneCaptureServiceStateUpdated");
+				}
+				break;
+			case EPICOProviderType::Pico_Provider_Plane:
+				{
+					UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->PlaneScanningStateUpdatedDelegate.Broadcast(State);
+					PXR_LOGV(PxrMR, "FPICOProviderManager::PlaneScanningStateUpdatedDelegate");
+				}
+				break;
+			case EPICOProviderType::Pico_Provider_Light_Estimation:
+				{
+					UPICOXRHMDFunctionLibrary::PXR_GetEventManager()->LightEstimationStateUpdatedDelegate.Broadcast(State);
+					PXR_LOGV(PxrMR, "FPICOProviderManager::LightEstimationStateUpdated");
 				}
 				break;
 			default: ;
@@ -734,6 +888,32 @@ bool FPICOProviderManager::Finalize()
 		}
 	}
 
+	if (PXR_PlaneProvider::GetInstance()->IsHandleValid())
+	{
+		if (PXR_PlaneProvider::GetInstance()->IsRunning()
+			&& PXR_PlaneProvider::GetInstance()->StopProvider())
+		{
+			bResult = PXR_PlaneProvider::GetInstance()->DestroyProvider();
+		}
+		else if (PXR_PlaneProvider::GetInstance()->IsInitialized())
+		{
+			bResult = PXR_PlaneProvider::GetInstance()->DestroyProvider();
+		}
+	}
+
+	if (PXR_LightEstimationProvider::GetInstance()->IsHandleValid())
+	{
+		if (PXR_LightEstimationProvider::GetInstance()->IsRunning()
+			&& PXR_LightEstimationProvider::GetInstance()->StopProvider())
+		{
+			bResult = PXR_LightEstimationProvider::GetInstance()->DestroyProvider();
+		}
+		else if (PXR_LightEstimationProvider::GetInstance()->IsInitialized())
+		{
+			bResult = PXR_LightEstimationProvider::GetInstance()->DestroyProvider();
+		}
+	}
+
 	if (HandleOfPollEvent.IsValid() && GetPICOXRHMDPtr().IsValid())
 	{
 		GetPICOXRHMDPtr()->OnPollEventDelegate().Remove(HandleOfPollEvent);
@@ -763,6 +943,16 @@ EPICOProviderType FPICOProviderManager::GetProviderTypeByHandle(const FPICOSpati
 	if (PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Scene_Capture)->IsEqualProvider(Handle.Value))
 	{
 		return EPICOProviderType::Pico_Provider_Scene_Capture;
+	}
+
+	if (PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Plane)->IsEqualProvider(Handle.Value))
+	{
+		return EPICOProviderType::Pico_Provider_Plane;
+	}
+
+	if (PXR_GetProviderInstance(EPICOProviderType::Pico_Provider_Light_Estimation)->IsEqualProvider(Handle.Value))
+	{
+		return EPICOProviderType::Pico_Provider_Light_Estimation;
 	}
 
 	return EPICOProviderType::Pico_Provider_Max;
@@ -877,6 +1067,10 @@ bool FPICOProviderManager::PXR_CreateSenseDataProvider(const FPICOSenseDataProvi
 		return PXR_MeshProvider::GetInstance()->CreateProvider(createInfo);
 	case EPICOProviderType::Pico_Provider_Scene_Capture:
 		return PXR_SceneProvider::GetInstance()->CreateProvider(createInfo);
+	case EPICOProviderType::Pico_Provider_Plane:
+		return PXR_PlaneProvider::GetInstance()->CreateProvider(createInfo);
+	case EPICOProviderType::Pico_Provider_Light_Estimation:
+		return PXR_LightEstimationProvider::GetInstance()->CreateProvider(createInfo);
 	default: ;
 	}
 
@@ -885,6 +1079,7 @@ bool FPICOProviderManager::PXR_CreateSenseDataProvider(const FPICOSenseDataProvi
 
 bool FPICOProviderManager::PXR_StartSenseDataProviderAsync(FPICOPollFutureDelegate Delegate, EPICOProviderType type,EPICOResult& Result)
 {
+	
 	switch (type)
 	{
 	case EPICOProviderType::Pico_Provider_Anchor:
@@ -893,6 +1088,10 @@ bool FPICOProviderManager::PXR_StartSenseDataProviderAsync(FPICOPollFutureDelega
 		return PXR_MeshProvider::GetInstance()->StartProvider(Delegate,Result);
 	case EPICOProviderType::Pico_Provider_Scene_Capture:
 		return PXR_SceneProvider::GetInstance()->StartProvider(Delegate,Result);
+	case EPICOProviderType::Pico_Provider_Plane:
+		return PXR_PlaneProvider::GetInstance()->StartProvider(Delegate,Result);
+	case EPICOProviderType::Pico_Provider_Light_Estimation:
+		return PXR_LightEstimationProvider::GetInstance()->StartProvider(Delegate,Result);
 	case EPICOProviderType::Pico_Provider_Max:
 		break;
 	default: ;
@@ -911,6 +1110,10 @@ bool FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType type)
 		return PXR_MeshProvider::GetInstance()->StopProvider();
 	case EPICOProviderType::Pico_Provider_Scene_Capture:
 		return PXR_SceneProvider::GetInstance()->StopProvider();
+	case EPICOProviderType::Pico_Provider_Plane:
+		return PXR_PlaneProvider::GetInstance()->StopProvider();
+	case EPICOProviderType::Pico_Provider_Light_Estimation:
+		return PXR_LightEstimationProvider::GetInstance()->StopProvider();
 	default: ;
 	}
 
@@ -927,6 +1130,10 @@ bool FPICOProviderManager::PXR_DestroySenseDataProvider(EPICOProviderType type)
 		return PXR_MeshProvider::GetInstance()->DestroyProvider();
 	case EPICOProviderType::Pico_Provider_Scene_Capture:
 		return PXR_SceneProvider::GetInstance()->DestroyProvider();
+	case EPICOProviderType::Pico_Provider_Plane:
+		return PXR_PlaneProvider::GetInstance()->DestroyProvider();
+	case EPICOProviderType::Pico_Provider_Light_Estimation:
+		return PXR_LightEstimationProvider::GetInstance()->DestroyProvider();
 	default: ;
 	}
 
@@ -943,6 +1150,10 @@ IPXR_BaseProvider* FPICOProviderManager::PXR_GetProviderInstance(EPICOProviderTy
 		return PXR_MeshProvider::GetInstance();
 	case EPICOProviderType::Pico_Provider_Scene_Capture:
 		return PXR_SceneProvider::GetInstance();
+	case EPICOProviderType::Pico_Provider_Plane:
+		return PXR_PlaneProvider::GetInstance();
+	case EPICOProviderType::Pico_Provider_Light_Estimation:
+		return PXR_LightEstimationProvider::GetInstance();
 	default: ;
 	}
 
@@ -967,6 +1178,18 @@ void FPICOProviderManager::PXR_PollFutureForProviders()
 	{
 		PXR_LOGV(PxrMR, "PXR_PollFutureForSceneProvider");
 		PXR_SceneProvider::GetInstance()->PXR_PollFuture();
+	}
+
+	if (PXR_PlaneProvider::GetInstance()->IsHandleValid())
+	{
+		PXR_LOGV(PxrMR, "PXR_PollFutureForPlaneProvider");
+		PXR_PlaneProvider::GetInstance()->PXR_PollFuture();
+	}
+
+	if (PXR_LightEstimationProvider::GetInstance()->IsHandleValid())
+	{
+		PXR_LOGV(PxrMR, "PXR_PollFutureForLightEstimationProvider");
+		PXR_LightEstimationProvider::GetInstance()->PXR_PollFuture();
 	}
 }
 
@@ -2446,7 +2669,6 @@ bool PXR_MeshProvider::GetSpatialTriangleMeshInfos(const FPICOSpatialHandle& Fut
                                                    float WorldToMetersScale,
                                                    TArray<FPICOSpatialMeshInfo>& MeshInfos, EPICOResult& OutResult)
 {
-	FScopeLock Lock(&CriticalSection);
 	FPICOSenseDataQueryCompletion SenseDataQueryCompletion;
 	if (!QuerySenseDataComplete(FutureHandle, SenseDataQueryCompletion,OutResult))
 	{
@@ -2585,7 +2807,6 @@ EPICOSpatialMeshLod PXR_MeshProvider::GetCurrentSpatialMeshLod()
 
 void PXR_MeshProvider::ClearMeshProviderBuffer()
 {
-	FScopeLock Lock(&CriticalSection);
 	CachedUUIDToMRMeshInfoMap.Empty();
 }
 
@@ -2623,6 +2844,219 @@ bool PXR_MeshProvider::RequestSpatialTriangleMesh(const FPICOPollFutureDelegate&
 }
 
 PXR_MeshProvider::PXR_MeshProvider():CurrentLod(EPICOSpatialMeshLod::High)
+{
+}
+
+bool PXR_PlaneProvider::CreateProvider(const FPICOSenseDataProviderCreateInfoBase& createInfo)
+{
+	check(createInfo.Type == EPICOProviderType::Pico_Provider_Plane);
+
+	Type = EPICOProviderType::Pico_Provider_Plane;
+
+	const FPICOSenseDataProviderCreateInfoPlane& PlaneCreateInfo = static_cast<const FPICOSenseDataProviderCreateInfoPlane&>(createInfo);
+	PxrSpatialPlaneProviderCreateInfo cSpatialPlaneProviderCreateInfo = {};
+	cSpatialPlaneProviderCreateInfo.type = PxrStructureType::PXR_TYPE_PLANE_DETECTION_PROVIDER_CREATE_INFO;
+	bool bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().CreateSenseDataProvider(reinterpret_cast<PxrSenseDataProviderCreateInfoBaseHeader*>(&cSpatialPlaneProviderCreateInfo),&ProviderHandle.Value));
+
+	if (!bResult)
+	{
+		ProviderHandle.Reset();
+	}
+	
+	bResult = bResult ? ProviderHandle.IsValid() : false;
+
+	return bResult;
+}
+
+bool PXR_PlaneProvider::StopProvider()
+{
+	ClearPlaneProviderBuffer();
+	return IPXR_BaseProvider::StopProvider();
+}
+
+bool PXR_PlaneProvider::GetSpatialTrianglePlaneInfos(const FPICOSpatialHandle& FutureHandle,const FTransform& TrackingToWorld,
+                                                   const FQuat& BaseOrientation,
+                                                   const FVector& BaseOffsetInMeters,
+                                                   float WorldToMetersScale,
+                                                   TArray<FPICOSpatialPlaneInfo>& PlaneInfos, EPICOResult& OutResult)
+{
+	FPICOSenseDataQueryCompletion SenseDataQueryCompletion;
+	if (!QuerySenseDataComplete(FutureHandle, SenseDataQueryCompletion,OutResult))
+	{
+		return false;
+	}
+	
+	if (PXR_FAILURE(SenseDataQueryCompletion.FutureResult))
+	{
+		OutResult = SenseDataQueryCompletion.FutureResult;
+		return false;
+	}
+
+	if (!SenseDataQueryCompletion.SnapShotHandle.IsValid())
+	{
+		OutResult =EPICOResult::PXR_Error_HandleInvalid;
+		return false;
+	}
+	
+	FPICOQueriedSenseData QueriedSenseData;
+	if (!GetQueriedSenseData(SenseDataQueryCompletion.SnapShotHandle, QueriedSenseData,OutResult))
+	{
+		return false;
+	}
+	TSet<FPICOSpatialUUID> CurrentUUIDSet;
+	TSet<FPICOSpatialUUID> RemovedUUIDSet;
+
+	PlaneInfos.Empty();
+	CurrentUUIDSet.Empty();
+	PXR_LOGV(PxrMR, "QueriedSenseData.QueriedSpatialEntityInfos Count:%d", QueriedSenseData.QueriedSpatialEntityInfos.Num());
+	PXR_LOGV(PxrMR, "CachedUUIDToMRPlaneInfoMap.Num:%d", CachedUUIDToMRPlaneInfoMap.Num());
+
+	int32 CountAfterDiff = 0;
+	for (auto EntityInfo : QueriedSenseData.QueriedSpatialEntityInfos)
+	{
+		if (!EntityInfo.spatialEntity)
+		{
+			continue;
+		}
+
+		CurrentUUIDSet.Add(EntityInfo.uuid.value);
+
+		CountAfterDiff++;
+		TArray<uint16> Triangles;
+		FPICOSpatialPlaneInfo cFPICOPlaneInfo;
+		cFPICOPlaneInfo.UUID = EntityInfo.uuid.value;
+		cFPICOPlaneInfo.UpdateTime = static_cast<int64>(EntityInfo.time);
+
+		if (IsContainsInLastUpdate(EntityInfo.uuid.value))
+		{
+			if (GetLastUpdateTimeByUUID(EntityInfo.uuid.value) >= EntityInfo.time)
+			{
+				CachedUUIDToMRPlaneInfoMap[EntityInfo.uuid.value].State = EPICOSpatialMeshState::Stable;
+				PXR_LOGV(PxrMR, "cComponentInfoGetInfo UUID:%llu Not Update", EntityInfo.uuid.value[0]);;
+				continue;
+			}
+			cFPICOPlaneInfo.State = EPICOSpatialMeshState::Updated;
+		}
+		else
+		{
+			cFPICOPlaneInfo.State = EPICOSpatialMeshState::Added;
+		}
+
+		if (!GetSpatialEntityLocation(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity,
+		                              cFPICOPlaneInfo.PlanePose,TrackingToWorld,
+		                              BaseOrientation,
+		                              BaseOffsetInMeters,
+		                              WorldToMetersScale))
+		{
+			PXR_LOGE(PxrMR, "spatialEntity:%llu,GetSpatialEntityLocation failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+
+		if (!GetSpatialEntityPlaneOrientation(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, cFPICOPlaneInfo.PlaneOrientation))
+		{
+			PXR_LOGE(PxrMR, "spatialEntity:%llu,GetSpatialEntityPlaneOrientation failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+		
+		TArray<EPICOSemanticLabel> Semantics;
+		if (!GetSpatialEntitySemantic(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, Semantics))
+		{
+			PXR_LOGE(PxrMR, "spatialEntity:%llu,GetSpatialEntitySemantic failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+		if (Semantics.Num())
+		{
+			cFPICOPlaneInfo.Semantic =Semantics[0];
+		}
+
+		if (!GetSpatialEntityTriangleMesh(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, cFPICOPlaneInfo.Vertices, Triangles))
+		{
+			PXR_LOGE(PxrMR, "spatialEntity:%llu,GetSpatialEntityTriangleMesh failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+
+		if (!GetSpatialEntityBoundary2D(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, cFPICOPlaneInfo.BoundingBox2D))
+		{
+			PXR_LOGE(PxrMR, "spatialEntity:%llu,GetSpatialEntityBoundary2D failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+
+		cFPICOPlaneInfo.Indices.SetNum(Triangles.Num());
+		cFPICOPlaneInfo.Indices = static_cast<TArray<int32>>(Triangles);
+
+		CachedUUIDToMRPlaneInfoMap.Emplace(EntityInfo.uuid.value, MoveTemp(cFPICOPlaneInfo));
+	}
+	PXR_LOGV(PxrMR, "QueriedSenseData.QueriedSpatialEntityInfos CountAfterDiff:%d", CountAfterDiff);
+
+	for (auto MRPlaneInfo : CachedUUIDToMRPlaneInfoMap)
+	{
+		PXR_LOGV(PxrMR, "MRMeshInfo State:%d", MRPlaneInfo.Value.State);
+
+		if (!CurrentUUIDSet.Contains(MRPlaneInfo.Key))
+		{
+			CachedUUIDToMRPlaneInfoMap[MRPlaneInfo.Key].State = EPICOSpatialMeshState::Removed;
+			RemovedUUIDSet.Add(MRPlaneInfo.Key);
+		}
+	}
+
+	CachedUUIDToMRPlaneInfoMap.GenerateValueArray(PlaneInfos);
+	PXR_LOGV(PxrMR, "New CachedUUIDToMRMeshInfoMap.Num:%d", CachedUUIDToMRPlaneInfoMap.Num());
+
+	for (auto RemovedUUID : RemovedUUIDSet)
+	{
+		PXR_LOGV(PxrMR, "RemovedUUID:%s", *RemovedUUID.ToString());
+		CachedUUIDToMRPlaneInfoMap.Remove(RemovedUUID);
+	}
+	PXR_LOGV(PxrMR, "After Delete CachedUUIDToMRPlaneInfoMap.Num:%d", CachedUUIDToMRPlaneInfoMap.Num());
+
+	if(!DestroySenseDataQueryResult(SenseDataQueryCompletion.SnapShotHandle,OutResult))
+	{
+		PXR_LOGV(PxrMR, "DestroySenseDataQueryResult Failed OutResult:%d", OutResult);
+		return false;
+	}
+	
+	return true;
+}
+
+void PXR_PlaneProvider::ClearPlaneProviderBuffer()
+{
+	CachedUUIDToMRPlaneInfoMap.Empty();
+}
+
+bool PXR_PlaneProvider::IsContainsInLastUpdate(const FPICOSpatialUUID& UUID)
+{
+	return CachedUUIDToMRPlaneInfoMap.Contains(UUID);
+}
+
+uint64 PXR_PlaneProvider::GetLastUpdateTimeByUUID(const FPICOSpatialUUID& UUID)
+{
+	if (IsContainsInLastUpdate(UUID))
+	{
+		return CachedUUIDToMRPlaneInfoMap[UUID].UpdateTime;
+	}
+
+	return 0;
+}
+
+
+bool PXR_PlaneProvider::RequestSpatialTrianglePlane(const FPICOPollFutureDelegate& Delegate,EPICOResult& OutResult)
+{
+	FPICOSpatialHandle Handle;
+	PxrSenseDataQueryInfo cSenseDataQueryInfoBD = {};
+	cSenseDataQueryInfoBD.type = PxrStructureType::PXR_TYPE_SENSE_DATA_QUERY_INFO;
+	cSenseDataQueryInfoBD.filter = nullptr;
+	int pxrResult=FPICOXRHMDModule::GetPluginWrapper().QuerySenseDataAsync(ProviderHandle.Value,&cSenseDataQueryInfoBD,&Handle.Value);
+	bool bResult = PXRP_SUCCESS(pxrResult);
+	OutResult=FPICOProviderManager::CastToPICOResult(static_cast<PxrResult>(pxrResult));
+	if (bResult)
+	{
+		bResult = AddPollFutureRequirement(Handle, Delegate);
+	}
+
+	return bResult;
+}
+
+PXR_PlaneProvider::PXR_PlaneProvider()
 {
 }
 
@@ -2851,6 +3285,166 @@ bool PXR_SceneProvider::StartSceneCaptureComplete(const FPICOSpatialHandle& Futu
 
 	completion.FutureResult = FPICOProviderManager::CastToPICOResult(cPxrSceneCaptureStartCompletionBD.futureResult);
 	return bResult && completion.FutureResult == EPICOResult::PXR_Success;
+}
+
+PXR_LightEstimationProvider::PXR_LightEstimationProvider()
+{
+	LightEstimationSize = FIntPoint(128, 128);
+	CurrentResolution = EPICOXRSpatialLightEstimationResolution::TextureResolution_128x128;
+}
+
+bool PXR_LightEstimationProvider::CreateProvider(const FPICOSenseDataProviderCreateInfoBase& createInfo)
+{
+	check(createInfo.Type == EPICOProviderType::Pico_Provider_Light_Estimation);
+
+	Type = EPICOProviderType::Pico_Provider_Light_Estimation;
+
+	const FPICOSenseDataProviderCreateInfoLightEstimation& LightEstimationCreateInfo = static_cast<const FPICOSenseDataProviderCreateInfoLightEstimation&>(createInfo);
+	PxrLightEstimationCreateInfo cSpatialLightEstimationProviderCreateInfoBD = {};
+	cSpatialLightEstimationProviderCreateInfoBD.type = PxrStructureType::PXR_TYPE_LIGHT_ESTIMATION_PROVIDER_CREATE_INFO;
+	cSpatialLightEstimationProviderCreateInfoBD.resolution = PxrEnvironmentTextureResolution::PXR_ENVIRONMENT_TEXTURE_RESOLUTION_128_128;
+	cSpatialLightEstimationProviderCreateInfoBD.transferType=PxrEnvironmentTextureTransferType::PXR_ENVIRONMENT_TEXTURE_TRANSFER_TYPE_VULKAN;
+	cSpatialLightEstimationProviderCreateInfoBD.createFlags = PXR_LIGHT_ESTIMATION_CREATE_ENVIRONMENT_TEXTURE_BIT;
+	cSpatialLightEstimationProviderCreateInfoBD.pixelFormat = PXR_ENVIRONMENT_TEXTURE_PIXEL_FORMAT_RGBA_16FLOAT;
+
+	CurrentResolution = LightEstimationCreateInfo.Resolution;
+
+	switch (LightEstimationCreateInfo.Resolution) {
+	case EPICOXRSpatialLightEstimationResolution::TextureResolution_8x8:
+		LightEstimationSize=FIntPoint(8,8);
+		break;
+	case EPICOXRSpatialLightEstimationResolution::TextureResolution_16x16:
+		LightEstimationSize=FIntPoint(16,16);
+		break;
+	case EPICOXRSpatialLightEstimationResolution::TextureResolution_32x32:
+		LightEstimationSize=FIntPoint(32,32);
+		break;
+	case EPICOXRSpatialLightEstimationResolution::TextureResolution_64x64:
+		LightEstimationSize=FIntPoint(64,64);
+		break;
+	case EPICOXRSpatialLightEstimationResolution::TextureResolution_128x128:
+		LightEstimationSize=FIntPoint(128,128);
+		break;
+	}
+	
+	bool bResult = PXRP_SUCCESS(FPICOXRHMDModule::GetPluginWrapper().CreateSenseDataProvider(reinterpret_cast<PxrSenseDataProviderCreateInfoBaseHeader*>(&cSpatialLightEstimationProviderCreateInfoBD),&ProviderHandle.Value));
+
+	if (!bResult)
+	{
+		ProviderHandle.Reset();
+	}
+	
+	PXR_LOGI(PxrMR, "AnchorProvider CreateProvider:%d ProviderHandle:%llu", bResult, ProviderHandle.GetValue());
+
+	bResult = bResult ? ProviderHandle.IsValid() : false;
+
+	return bResult;
+}
+
+bool PXR_LightEstimationProvider::RequestLightEstimation(const FPICOPollFutureDelegate& Delegate,
+                                                         EPICOResult& OutResult)
+{
+	FPICOSpatialHandle Handle;
+	PxrSenseDataQueryInfo cSenseDataQueryInfoBD = {};
+	cSenseDataQueryInfoBD.type = PxrStructureType::PXR_TYPE_SENSE_DATA_QUERY_INFO;
+
+	int pxrResult=FPICOXRHMDModule::GetPluginWrapper().QuerySenseDataAsync(ProviderHandle.Value,&cSenseDataQueryInfoBD,&Handle.Value);
+	bool bResult = PXRP_SUCCESS(pxrResult);
+	
+	OutResult=FPICOProviderManager::CastToPICOResult(static_cast<PxrResult>(pxrResult));
+	
+	if (bResult)
+	{
+		bResult = AddPollFutureRequirement(Handle, Delegate);
+	}
+
+	return bResult;
+}
+
+bool PXR_LightEstimationProvider::GetLightEstimationInfo(const FPICOSpatialHandle& FutureHandle,
+	UPICOLightEstimationTexture* TextureCube, float& SourceCubemapAngle, EPICOResult& OutResult)
+{
+	FPICOSenseDataQueryCompletion SenseDataQueryCompletion;
+	if (!QuerySenseDataComplete(FutureHandle, SenseDataQueryCompletion,OutResult))
+	{
+		return false;
+	}
+	
+	if (PXR_FAILURE(SenseDataQueryCompletion.FutureResult))
+	{
+		OutResult = SenseDataQueryCompletion.FutureResult;
+		return false;
+	}
+
+	if (!SenseDataQueryCompletion.SnapShotHandle.IsValid())
+	{
+		OutResult =EPICOResult::PXR_Error_HandleInvalid;
+		return false;
+	}
+	
+	FPICOQueriedSenseData QueriedSenseData;
+	if (!GetQueriedSenseData(SenseDataQueryCompletion.SnapShotHandle, QueriedSenseData,OutResult))
+	{
+		return false;
+	}
+	
+	for (auto EntityInfo : QueriedSenseData.QueriedSpatialEntityInfos)
+	{
+		TArray<EPICOSpatialEntityComponentType> ComponentTypes;
+
+		if (!EnumerateSpatialEntityComponentTypes(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, ComponentTypes))
+		{
+			PXR_LOGE(PxrMR, "EnumerateSpatialEntityComponentTypes:%llu Failed!!!", EntityInfo.spatialEntity);
+			continue;
+		}
+
+		for (EPICOSpatialEntityComponentType ComponentType : ComponentTypes)
+		{
+			PXR_LOGV(PxrMR, "ComponentType:%d", ComponentType);
+			switch (ComponentType)
+			{
+			case EPICOSpatialEntityComponentType::Location:
+				{
+					FTransform cFTransform;
+					FQuat BaseOrientation = FPICOProviderManager::GetBaseOrientation();
+					FVector BaseOffsetInMeters = FPICOProviderManager::GetBaseOffsetInMeters();
+					float WorldToMetersScale = FPICOProviderManager::GetWorldToMetersScale();
+					FTransform TrackingToWorld = FPICOProviderManager::GetTrackingToWorldTransform();
+
+					if (GetSpatialEntityLocation(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity, cFTransform, TrackingToWorld,BaseOrientation, BaseOffsetInMeters, WorldToMetersScale))
+					{
+						//Todo:Opposite to the direction of the UE, I don't know what the reason is, add a symbol first
+						SourceCubemapAngle=-cFTransform.GetRotation().Rotator().Yaw;
+						PXR_LOGV(PxrMR, "GetSpatialEntityLightEstimateData SourceCubemapAngle:%f", SourceCubemapAngle);
+					}
+				}
+				break;
+				case EPICOSpatialEntityComponentType::LightEstimation:
+				{
+					if (GetSpatialEntityLightEstimateData(SenseDataQueryCompletion.SnapShotHandle, EntityInfo.spatialEntity,LightEstimationSize,TextureCube))
+					{
+						PXR_LOGV(PxrMR, "GetSpatialEntityLightEstimateData Success");
+					}
+						
+				}
+				break;
+			default: ;
+			}
+		}
+	}
+	
+	if(!DestroySenseDataQueryResult(SenseDataQueryCompletion.SnapShotHandle,OutResult))
+	{
+		PXR_LOGV(PxrMR, "DestroySenseDataQueryResult Failed OutResult:%d", OutResult);
+		return false;
+	}
+	
+	return true;
+}
+
+EPICOXRSpatialLightEstimationResolution PXR_LightEstimationProvider::GetCurrentLightEstimationResolution()
+{
+	return CurrentResolution;
 }
 
 bool PXR_SceneProvider::CreateProvider(const FPICOSenseDataProviderCreateInfoBase& createInfo)

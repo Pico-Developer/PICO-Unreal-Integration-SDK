@@ -6,7 +6,7 @@
 		<setBoolFromProperty result="bEnableEyeTrackingCalibration" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableEyeTrackingCalibration" default="false"/>
 		<setBoolFromProperty result="bIsHandTrackingUsed" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bIsHandTrackingUsed" default="false"/>
 		<setBoolFromProperty result="bIsHandHighFrequencyTracking" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bIsHandHighFrequencyTracking" default="false"/>
-		<setBoolFromProperty result="bIsFaceTrackingUsed" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bIsFaceTrackingUsed" default="false"/>
+		<setBoolFromProperty result="bEnableFaceTracking" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableFaceTracking" default="false"/>
 		<setBoolFromProperty result="bEnableBodyTracking" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableBodyTracking" default="false"/>
 		<setBoolFromProperty result="bUsingOSSplash" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bUsingOSSplash" default="false"/>
 		<setBoolFromProperty result="bEnableMRSafeguard" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableMRSafeguard" default="false"/>
@@ -15,11 +15,16 @@
 		<setBoolFromProperty result="bEnableCloudAnchor" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableCloudAnchor" default="false"/>
 		<setBoolFromProperty result="bEnableSceneCapture" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableSceneCapture" default="false"/>
 		<setBoolFromProperty result="bEnableMesh" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableMesh" default="false"/>
+		<setBoolFromProperty result="bEnablePlane" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnablePlane" default="false"/>
+		<setBoolFromProperty result="bIsMetaEyeTrackedFoveationEnabled" ini="Game" section="/Script/OpenXRHMD.OpenXRHMDSettings" property="bIsMetaEyeTrackedFoveationEnabled" default="false"/>
+		<setBoolFromProperty result="bEnableLightEstimation" ini="Engine" section="/Script/PICOOpenXRRuntimeSettings.PICOOpenXRRuntimeSettings" property="bEnableLightEstimation" default="false"/>
 	</init>
 	<!-- optional updates applied to AndroidManifest.xml -->
 	<androidManifestUpdates>
 		<addElements tag="application">
-			<meta-data android:name="pvr.sdk.version" android:value="UE_PICO_OpenXR_1.5.2"/>
+			<meta-data android:name="pvr.sdk.version" android:value="UE_PICO_OpenXR_6.0.0"/>
+			<meta-data android:name="pxr.sdk.generation" android:value="4" />
+			<meta-data android:name="pxr.sdk.version_code" android:value="6000" />
 		</addElements>
 	<!-- Add MR Flag -->
 	<if condition="bEnableAnchor">
@@ -36,6 +41,20 @@
 						<true>
 							<addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
 						</true>
+						<false>
+							<if condition="bEnablePlane">
+								<true>
+									<addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
+								</true>
+								<false>
+								<if condition="bEnableLightEstimation">
+									<true>
+										<addPermission android:name="com.picovr.permission.SPATIAL_DATA" />
+									</true>
+								</if>
+								</false>
+							</if>
+						</false>
 					</if>
 				</false>
 			</if>
@@ -123,6 +142,11 @@
 		<!-- Add MR Flag -->
 
 		<!-- Add Eye Tracking flags-->
+		<if condition="bIsMetaEyeTrackedFoveationEnabled">
+			<true>
+				<addPermission android:name="com.pico.xrpermission.ETFR"/>
+			</true>
+		</if>
 		<setBool result="bEyeTrackingFeature" value="false"/>
 		<setBoolOr result="bEyeTrackingFeature" arg1="$B(bEyeTrackingFeature)" arg2="$B(bEyeTrackingEnabled)"/>
 		<if condition="bEyeTrackingFeature">
@@ -152,11 +176,6 @@
 					<meta-data android:name="handtracking" android:value="1"/>
 				</addElements>
 			</true>
-			<false>
-				<addElements tag="application">
-					<meta-data android:name="handtracking" android:value="0"/>
-				</addElements>
-			</false>
 		</if>
 
 		<if condition="bIsHandHighFrequencyTracking">
@@ -174,7 +193,7 @@
 
 		<!-- Add Face Tracking flags-->
 		<setBool result="bFaceTrackingFeature" value="false"/>
-		<setBoolOr result="bFaceTrackingFeature" arg1="$B(bFaceTrackingFeature)" arg2="$B(bIsFaceTrackingUsed)"/>
+		<setBoolOr result="bFaceTrackingFeature" arg1="$B(bFaceTrackingFeature)" arg2="$B(bEnableFaceTracking)"/>
 		<if condition="bFaceTrackingFeature">
 			<true>
 				<log text="Adding face tracking feature and permission tags to manifest"/>
@@ -204,6 +223,20 @@
 			</true>
 		</if>
 	</androidManifestUpdates>
+
+	<gameActivityOnCreateAdditions>
+		<insert>
+			try {
+				android.content.pm.ApplicationInfo applicationInfo = getPackageManager().getApplicationInfo(getPackageName(), android.content.pm.PackageManager.GET_META_DATA);
+				if (applicationInfo.metaData != null) {
+					String pvrSdkVersion = applicationInfo.metaData.getString("pvr.sdk.version", "");
+					android.util.Log.i("PICOOpenXR", "pvr.sdk.version: " + pvrSdkVersion);
+				}
+			} catch (Exception e) {
+				android.util.Log.w("PICOOpenXR", "Failed to read pvr.sdk.version from manifest meta-data", e);
+			}
+		</insert>
+	</gameActivityOnCreateAdditions>
 
 	<!-- optional additions to proguard -->
 	<proguardAdditions>

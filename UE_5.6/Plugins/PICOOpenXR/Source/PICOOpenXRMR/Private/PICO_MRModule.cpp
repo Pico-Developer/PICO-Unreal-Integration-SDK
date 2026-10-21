@@ -1,25 +1,17 @@
-// Copyright 2023 PICO Inc. All Rights Reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_MRModule.h"
 
-#include "PICO_SpatialMesh.h"
-#include "PICO_SpatialAnchor.h"
-#include "PICO_SceneCapture.h"
-
 void FPICOOpenXRMRModule::StartupModule()
 {
-	FSpatialSensingExtensionPICO::GetInstance()->Register();
-	FSpatialMeshExtensionPICO::GetInstance()->Register();
-	FSpatialAnchorExtensionPICO::GetInstance()->Register();
-	FSceneCaptureExtensionPICO::GetInstance()->Register();
+	MRModuleExtension.Register();
 }
 
 void FPICOOpenXRMRModule::ShutdownModule()
 {
-	FSpatialSensingExtensionPICO::GetInstance()->Unregister();
-	FSpatialMeshExtensionPICO::GetInstance()->Unregister();
-	FSpatialAnchorExtensionPICO::GetInstance()->Unregister();
-	FSceneCaptureExtensionPICO::GetInstance()->Unregister();
+	MRModuleExtension.Unregister();
 }
 
 IMPLEMENT_MODULE(FPICOOpenXRMRModule, PICOOpenXRMR)

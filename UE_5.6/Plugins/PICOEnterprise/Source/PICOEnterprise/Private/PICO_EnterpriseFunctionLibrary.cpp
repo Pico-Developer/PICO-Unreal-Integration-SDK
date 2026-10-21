@@ -1732,21 +1732,7 @@ void UPICOEnterpriseFunctionLibrary::PE_SetArUcoMarkerF(UObject* InWorldContext,
 bool UPICOEnterpriseFunctionLibrary::PE_InitEnterpriseService(FString& Token)
 {
 	Token.Empty();
-#if PLATFORM_ANDROID
-	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
-	{
-		static jmethodID Method = FJavaWrapper::FindMethod(Env, FJavaWrapper::GameActivityClassID, "GetToken", "()Ljava/lang/String;", false);
-		jstring JavaString = (jstring)FJavaWrapper::CallObjectMethod(Env, FJavaWrapper::GameActivityThis, Method);
-		if (JavaString != NULL)
-		{
-			const char* JavaChars = Env->GetStringUTFChars(JavaString, 0);
-			Token = FString(UTF8_TO_TCHAR(JavaChars));
-			Env->ReleaseStringUTFChars(JavaString, JavaChars);
-			Env->DeleteLocalRef(JavaString);
-		}
-	}
-#endif
-	return Token.Len() > 0;
+	return true;
 }
 
 int32 UPICOEnterpriseFunctionLibrary::PE_GetHeadTrackingConfidence()

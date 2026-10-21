@@ -292,7 +292,10 @@ struct PICOPluginWrapper
 	PICO_DECLARE_ENTRY_POINT(PersistSpatialAnchorComplete);
 	PICO_DECLARE_ENTRY_POINT(UnpersistSpatialAnchorAsync);
 	PICO_DECLARE_ENTRY_POINT(UnpersistSpatialAnchorComplete);
-	
+	/*
+	 * mr sdk 3.0 light estimation
+	 */
+	PICO_DECLARE_ENTRY_POINT(ReleaseEnvironmentTextureImage);
 	/**
 	*  mr sdk 3.0 scene capture
 	*/
@@ -305,6 +308,19 @@ struct PICOPluginWrapper
 	PICO_DECLARE_ENTRY_POINT(ShareSpatialAnchorComplete);
 	PICO_DECLARE_ENTRY_POINT(DownloadSharedSpatialAnchorAsync);
 	PICO_DECLARE_ENTRY_POINT(DownloadSharedSpatialAnchorComplete);
+	/*
+	 * mr sdk 3.0 environment depth
+	*/
+	PICO_DECLARE_ENTRY_POINT(CreateEnvironmentDepthProvider);
+	PICO_DECLARE_ENTRY_POINT(DestroyEnvironmentDepthProvider);
+	PICO_DECLARE_ENTRY_POINT(StartEnvironmentDepthProvider);
+	PICO_DECLARE_ENTRY_POINT(StopEnvironmentDepthProvider);
+	PICO_DECLARE_ENTRY_POINT(CreateEnvironmentDepthSwapchain);
+	PICO_DECLARE_ENTRY_POINT(DestroyEnvironmentDepthSwapchain);
+	PICO_DECLARE_ENTRY_POINT(EnumerateEnvironmentDepthSwapchainImages);
+	PICO_DECLARE_ENTRY_POINT(GetEnvironmentDepthSwapchainState);
+	PICO_DECLARE_ENTRY_POINT(AcquireEnvironmentDepthImage);
+	PICO_DECLARE_ENTRY_POINT(SetEnvironmentDepthHandRemoval);
 	//----------------MR 3.0-------
 
 	//----------------ETFR-------

@@ -6,7 +6,7 @@
 #include "UObject/ObjectMacros.h"
 
 UENUM(BlueprintType)
-enum class EPxrAudioSpatializer_RenderingMode : uint8
+enum class EPxrAudioSpatializer_RenderingQuality : uint8
 {
 	Low_Quality = 0 UMETA(DisplayName = "Low Quality"),
 	///< 1st order ambisonics

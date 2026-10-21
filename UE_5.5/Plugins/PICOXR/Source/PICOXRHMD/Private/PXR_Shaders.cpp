@@ -6,3 +6,6 @@
 #include "PXR_Shaders.h"
 
 IMPLEMENT_SHADER_TYPE(, FPICOCubemapPS, TEXT("/Plugin/PICOXR/Private/PICOShaders.usf"), TEXT("MainForCubemap"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(, FPICOLightCubemapPS, TEXT("/Plugin/PICOXR/Private/PICOShaders.usf"), TEXT("MainForLightCubemap"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(template <>, FScreenPSEnvironmentDepthMinMax<true>, TEXT("/Plugin/PICOXR/Private/ScreenPSEnvironmentDepthMinMax.usf"), TEXT("Main"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(template <>, FScreenPSEnvironmentDepthMinMax<false>, TEXT("/Plugin/PICOXR/Private/ScreenPSEnvironmentDepthMinMax.usf"), TEXT("Main"), SF_Pixel);

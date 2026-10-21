@@ -6,20 +6,12 @@ DEFINE_LOG_CATEGORY(PICOOpenXRMovement);
 
 void FPICOOpenXRMovementModule::StartupModule()
 {
-    FaceTrackingPICOExtension.Register();
-    BodyTrackingPICOExtension.Register();
-    MotionTrackingPICOExtension.Register();
-    EyeTrackingPICOExtension.Register();
-    ExpandDeviceExtension.Register();
+    MovementExtension.Register();
 }
 
 void FPICOOpenXRMovementModule::ShutdownModule()
 {
-    FaceTrackingPICOExtension.Unregister();
-    BodyTrackingPICOExtension.Unregister();
-    MotionTrackingPICOExtension.Unregister();
-    EyeTrackingPICOExtension.Unregister();
-    ExpandDeviceExtension.Unregister();
+    MovementExtension.Unregister();
 }
 
 TSharedPtr<ILiveLinkSource> FPICOOpenXRMovementModule::GetLiveLinkSource()

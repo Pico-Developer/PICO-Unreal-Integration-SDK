@@ -96,7 +96,7 @@ namespace Pxr_Audio
 			InternalSourceProperty.Config.directivity_alpha = SourceSetting->DirectivityAlpha;
 			InternalSourceProperty.Config.directivity_order = SourceSetting->DirectivityOrder;
 			Result = FContextSingleton::GetInstance()->AddSourceWithConfig(
-				&InternalSourceProperty.Config, &InternalSourceProperty.SourceId, true);
+				&InternalSourceProperty.Config, &InternalSourceProperty.SourceId);
 
 			if (Result != PASP_SUCCESS)
 			{

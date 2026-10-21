@@ -64,9 +64,58 @@ PXR_AUDIO_SPATIALIZER_EXPORT const char* PxrAudioSpatializer_GetVersion(int* maj
  */
 PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
 PxrAudioSpatializer_CreateContext(PxrAudioSpatializer_Context** ctx,
-                                  PxrAudioSpatializer_RenderingMode mode,
+                                  PxrAudioSpatializer_RenderingQuality quality,
                                   size_t frames_per_buffer,
                                   size_t sample_rate);
+
+/**
+ * 创建 Pico 空间音频渲染器 context
+ *
+ * Pico 空间音频渲染器 所有 API 的调用都基于 context，在使用 Pico 空间音频渲染器 之初，需要调用这个函数创建 context
+ * 以供调用其他 API 使用.
+ *
+ * @param[out] ctx 用于保存context的指针地址
+ * @param mode 用于创建 context 的渲染质量，可选
+ * PASP_FreeField，PASP_FreeFieldDirectConvolution，PASP_LowComplexity，PASP_EnvironmentalAcoustics
+ * @param quality 用于创建 context 的渲染质量，可选
+ * PASP_LOW_QUALITY，PASP_MEDIUM_QUALITY，PASP_HIGH_QUALITY。在基础模式下对应不同ambisonic阶数，在环境声学开启的模式下还会改变，射线数量，路径深度等其他参数
+ * @param frames_per_buffer 每次输入到引擎的单通道的 buffer 长度，关于 frame 的定义可以参考
+ * https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Basic_concepts_behind_Web_Audio_API#audio_buffers_frames_samples_and_channels
+ * @param sample_rate 输入到引擎音频的采样率
+ * @return 返回执行结果
+ *
+ * * Create Pico Spatial Audio Renderer context
+ *
+ * All API calls of Pico Spatial Audio Renderer needs to be provided with a context，therefore you should create a
+ * context BEFORE you make any API calls
+ *
+ * @param[out] ctx A pointer of context pointer. The created context address will be written to the context pointer
+ * @param mode The rendering mode for your specific need, you can choose from one of the following
+ * modes:
+ *       PASP_FreeField,
+ *       PASP_FreeFieldDirectConvolution,
+ *       PASP_LowComplexity,
+ *       PASP_EnvironmentalAcoustics.
+ * @param quality The rendering tier for your specific need, you can choose from one of the following
+ * tiers:
+ *       PASP_LOW_QUALITY,
+ *       PASP_MEDIUM_QUALITY,
+ *       PASP_HIGH_QUALITY.
+ * If you build / run in free field mode, this rendering tier only affects the ambisonic order;
+ * however, if you included environmental acoustics simulation, this rendering tier also changes number of rays,
+ * maximum path depth, and etc.
+ * @param frames_per_buffer which defines the size of each mono input buffer. More details about the concept of "audio
+ * frame" can be found here:
+ * https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Basic_concepts_behind_Web_Audio_API#audio_buffers_frames_samples_and_channels
+ * @param sample_rate The sampling rate of I/O signal to/from the engine.
+ * @return Error code of this API call. Returns PASP_SUCCESS if nothing was wrong.
+ */
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_CreateContextByMode(PxrAudioSpatializer_Context** ctx,
+                                        PxrAudioSpatializer_RenderingMode mode,
+                                        PxrAudioSpatializer_RenderingQuality quality,
+                                        size_t frames_per_buffer,
+                                        size_t sample_rate);
 
 /**
  * 初始化 Pico 空间音频渲染器 context
@@ -198,6 +247,45 @@ PxrAudioSpatializer_SubmitMeshWithConfig(PxrAudioSpatializer_Context* ctx,
                                          int indices_count,
                                          const PxrAudioSpatializer_AcousticMeshConfig* config,
                                          int* geometry_id);
+
+/**
+ * 更新场景中的已有mesh。
+ *
+ * @param ctx 要使用的的 context
+ * @param geometry_id 已有mesh的id
+ * @param new_vertices 新mesh的顶点数组
+ * @param new_vertices_count 新mesh的顶点的个数
+ * @param new_indices 新mesh中三角形的顶点索引数组
+ * @param new_indices_count 新mesh的索引数组（三角形）的个数
+ * @param new_config 新mesh的属性
+ * @param[out] new_geometry_id 返回mesh的新id
+ * @param is_async (默认值为false) 是否以非同步的方法更新mesh
+ * @return 返回执行结果
+ *
+ * Update shape and config of existing scene mesh
+ *
+ * @param ctx Yggdrasil context
+ * @param geometry_id ID of existing scene mesh
+ * @param new_vertices New vertices array of the scene mesh
+ * @param new_vertices_count Number of vertices in the new vertices array
+ * @param new_indices New indices array of the scene mesh
+ * @param new_indices_count Number of triangles represented by the new indices array
+ * @param new_config New config of the mesh
+ * @param[out] new_geometry_id Returns the new geometry id of the scene mesh
+ * @param is_async (Default to false) Whether update this mesh asynchronously
+ * @return Error code of this API call. Returns YGG_SUCCESS if nothing was wrong.
+ */
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_UpdateMesh(PxrAudioSpatializer_Context* ctx,
+                               int geometry_id,
+                               const float* new_vertices,
+                               int new_vertices_count,
+                               const int* new_indices,
+                               int new_indices_count,
+                               const PxrAudioSpatializer_AcousticMeshConfig* new_config,
+                               int* new_geometry_id,
+                               bool is_async = false);
 
 /**
  * 从场景中删除指定的场景mesh
@@ -616,6 +704,37 @@ PxrAudioSpatializer_SubmitSourceBuffer(PxrAudioSpatializer_Context* ctx,
                                        int source_id,
                                        const float* input_buffer_ptr,
                                        size_t num_frames);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_AddSoundFieldWithConfig(PxrAudioSpatializer_Context* ctx,
+                                            const PxrAudioSpatializer_SoundFieldConfig* config,
+                                            int* sound_field_id,
+                                            bool is_async = false);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_SetSoundFieldConfig(PxrAudioSpatializer_Context* ctx,
+                                        int sound_field_id,
+                                        const PxrAudioSpatializer_SoundFieldConfig* config,
+                                        unsigned int property_mask = PASP_SoundFieldProperty_All);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_GetSoundFieldConfig(PxrAudioSpatializer_Context* ctx,
+                                        int sound_field_id,
+                                        PxrAudioSpatializer_SoundFieldConfig* config);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_SubmitPlanarSoundFieldInputBuffer(PxrAudioSpatializer_Context* ctx,
+                                                      int sound_field_id,
+                                                      const float* const* input_buffer_ptr);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_SubmitInterleavedSoundFieldInputBuffer(PxrAudioSpatializer_Context* ctx,
+                                                           int sound_field_id,
+                                                           const float* input_buffer_ptr);
+
+PXR_AUDIO_SPATIALIZER_EXPORT PxrAudioSpatializer_Result
+PxrAudioSpatializer_RemoveSoundField(PxrAudioSpatializer_Context* ctx, int sound_field_id);
+
 /**
  * 提交当前的 HOA 音频 PCM buffer。每次调用可以以声道为单位提交 HOA 中指定 order 与 degree 声道的 buffer。这里的 HOA
  * 内容会与 object 的音频内容进行混音。
@@ -782,14 +901,14 @@ PxrAudioSpatializer_GetInterleavedBinauralBuffer(PxrAudioSpatializer_Context* ct
  * @param is_accumulative 是否将输出双耳信号叠加到 output_buffer_ptr 中的已有信号上
  * @return 返回执行结果
  *
- * Same as PxrAudioSpatializer_GetInterleavedBinauralBuffer, but the output layout is planer stereo.
+ * Same as PxrAudioSpatializer_GetInterleavedBinauralBuffer, but the output layout is planar stereo.
  *
  * This is one of the core API call of Pico Spatial Audio Renderer. After we submitted all source input using
- * PxrAudioSpatializer_SubmitSourceBuffer, use this API to get the planer binaural output signal.
+ * PxrAudioSpatializer_SubmitSourceBuffer, use this API to get the planar binaural output signal.
  * FYI: use headphone to play back binaural signal.
  *
  * @param ctx Context pointer
- * @param output_buffer_ptr Pointer to output audio buffer, which is a planer stereo buffer with
+ * @param output_buffer_ptr Pointer to output audio buffer, which is a planar stereo buffer with
  * 2 * frames_per_buffer of element.
  * @param num_frames Frame count of the output signal
  * @param is_accumulative Set to true if we want to accumulate current output binaural signal to the existing signal
@@ -848,11 +967,11 @@ PxrAudioSpatializer_GetInterleavedLoudspeakersBuffer(PxrAudioSpatializer_Context
  * @return 返回执行结果
  *
  * Get spatialized audio output, same as PxrAudioSpatializer_GetInterleavedLoudspeakersBuffer, but the output layout is
- * planer.
+ * planar.
  *
  * This is one of the core API call of Pico Spatial Audio Renderer. After we submitted all source input using
  * PxrAudioSpatializer_SubmitSourceBuffer，we call this API to get spatialized audio in multichannel format, aimed for
- * playback on loudspeaker array. Output layout is planer.
+ * playback on loudspeaker array. Output layout is planar.
  *
  * @param ctx Context pointer
  * @param[out] output_buffer_ptr Pointer to output audio buffer。Output buffer pointer, which has

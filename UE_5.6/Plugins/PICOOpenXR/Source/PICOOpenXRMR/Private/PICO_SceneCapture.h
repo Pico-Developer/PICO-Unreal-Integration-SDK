@@ -1,31 +1,26 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 #include "CoreMinimal.h"
 #include "PICO_MR.h"
 
+// Forward declaration
+class FPICOOpenXRMRModule;
+
 class FSceneCaptureExtensionPICO :public FMixedRealityPICO
 {
 public:
 	FSceneCaptureExtensionPICO();
-	virtual ~FSceneCaptureExtensionPICO() {}
-	
-	/** IOpenXRExtensionPlugin implementation */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("SceneCapturePICO"));
-	}
+	virtual ~FSceneCaptureExtensionPICO() override {}
 
-	static FSceneCaptureExtensionPICO* GetInstance()
-	{
-		static FSceneCaptureExtensionPICO Instance;
-		return &Instance;
-	}
+	static FSceneCaptureExtensionPICO* GetInstance();
 	
 	virtual bool CreateProvider(const FSenseDataProviderCreateInfoBasePICO& CreateInfo,EResultPICO& OutResult) override;
 
-	virtual bool GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual void PostGetSystem(XrInstance InInstance, XrSystemId InSystem) override;
+	void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	void PostGetSystem(XrInstance InInstance, XrSystemId InSystem);
 	virtual void PostCreateSession(XrSession InSession) override;
 	
 	bool RequestSpatialSceneInfos(const FSceneLoadInfoPICO& LoadInfo, const FPICOPollFutureDelegate& Delegate,EResultPICO& OutResult);

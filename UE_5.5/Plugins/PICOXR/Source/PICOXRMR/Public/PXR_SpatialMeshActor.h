@@ -52,6 +52,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PICO XR Toolkit")
 	bool ClearMesh();
 
+	// Define delegates for mesh addition, update, and removal events
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnSpatialMeshChangeEvent, EPICOSpatialMeshState, State, const FPICOSpatialMeshInfo&, PicoSpatialMeshInfo, USceneComponent*, PicoSpatialMeshComponent);
+	UPROPERTY(BlueprintAssignable)
+	FOnSpatialMeshChangeEvent OnSpatialMeshChangedEvent;
+
 private:
 	UFUNCTION()
 	void HandleRequestSpatialMeshContentsEvent(EPICOResult Result, const TArray<FPICOSpatialMeshInfo>& MeshInfos);

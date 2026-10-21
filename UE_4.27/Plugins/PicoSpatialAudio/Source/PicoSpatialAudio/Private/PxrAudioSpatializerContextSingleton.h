@@ -17,7 +17,7 @@ namespace Pxr_Audio
 			{
 			}
 
-			static PxrAudioSpatializer_Result Init(PxrAudioSpatializer_RenderingMode Quality, size_t FramesPerBuffer,
+			static PxrAudioSpatializer_Result Init(PxrAudioSpatializer_RenderingQuality Quality, size_t FramesPerBuffer,
 			                                       size_t SampleRate);
 			static bool IsInitialized();
 			static PxrAudioSpatializer_Result Destroy();
@@ -25,23 +25,6 @@ namespace Pxr_Audio
 
 			//	Singleton Access of API functions
 			const char* GetVersion(int* Major, int* Minor, int* Patch) const;
-			PxrAudioSpatializer_Result SubmitMesh(
-				const float* Vertices,
-				int VerticesCount,
-				const int* Indices,
-				int IndicesCount,
-				PxrAudioSpatializer_AcousticsMaterial
-				Material,
-				int* GeometryId) const;
-			PxrAudioSpatializer_Result SubmitMeshAndMaterialFactor(
-				const float* Vertices,
-				int VerticesCount,
-				const int* Indices,
-				int IndicesCount,
-				const float* AbsorptionFactor,
-				float ScatteringFactor,
-				float TransmissionFactor,
-				int* GeometryId) const;
 			PxrAudioSpatializer_Result SubmitMeshWithConfig(
 				const float* Vertices,
 				int VerticesCount,
@@ -49,6 +32,14 @@ namespace Pxr_Audio
 				int IndicesCount,
 				const PxrAudioSpatializer_AcousticMeshConfig* Config,
 				int* GeometryId) const;
+			PxrAudioSpatializer_Result UpdateMesh(
+				int GeometryId,
+				const float* Vertices,
+				int VerticesCount,
+				const int* Indices,
+				int IndicesCount,
+				const PxrAudioSpatializer_AcousticMeshConfig* Config,
+				int* NewGeometryId) const;
 			PxrAudioSpatializer_Result RemoveMesh(int GeometryId) const;
 			PxrAudioSpatializer_Result SetMeshEnable(int GeometryId, bool Enable) const;
 			PxrAudioSpatializer_Result

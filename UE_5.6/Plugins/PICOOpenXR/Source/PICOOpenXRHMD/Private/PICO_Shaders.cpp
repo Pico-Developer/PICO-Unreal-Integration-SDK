@@ -6,3 +6,4 @@
 #include "PICO_Shaders.h"
 
 IMPLEMENT_SHADER_TYPE(, FDisplayMappingPixelShader, TEXT("/Engine/Private/DisplayMappingPixelShader.usf"), TEXT("DisplayMappingPS"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(, FPICOCubemapPS, TEXT("/Plugin/PICOOpenXR/Private/PICOShaders.usf"), TEXT("MainForCubemap"), SF_Pixel);

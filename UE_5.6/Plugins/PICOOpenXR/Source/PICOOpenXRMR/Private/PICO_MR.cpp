@@ -1,30 +1,33 @@
-// Copyright 2023 PICO Inc. All Rights Reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+
 #include "PICO_MR.h"
+#include "PICO_MRModule.h"
 #include "OpenXRCore.h"
 #include "IOpenXRHMDModule.h"
+
 #include "IXRTrackingSystem.h"
+#include "PICO_LightEstimation.h"
 #include "Engine/Engine.h"
 
 #include "PICO_MRFunctionLibrary.h"
+#include "PICO_MRTextures.h"
 #include "PICO_MRTypes.h"
 #include "PICO_SceneCapture.h"
 #include "PICO_SpatialAnchor.h"
 #include "PICO_SpatialMesh.h"
-
+#include "PICO_SpatialPlane.h"
 
 
 FSpatialSensingExtensionPICO::FSpatialSensingExtensionPICO(): CurrentDisplayTime(0), GlobalUUIDCount(0)
 {
 }
 
-void FSpatialSensingExtensionPICO::Register()
+FSpatialSensingExtensionPICO* FSpatialSensingExtensionPICO::GetInstance()
 {
-	RegisterOpenXRExtensionModularFeature();
-}
-
-void FSpatialSensingExtensionPICO::Unregister()
-{
-	UnregisterOpenXRExtensionModularFeature();
+	return &FPICOOpenXRMRModule::Get().GetMRModuleExtension().GetSpatialSensingPICO();
 }
 
 void FSpatialSensingExtensionPICO::OnEvent(XrSession InSession, const XrEventDataBaseHeader* InHeader)
@@ -39,11 +42,10 @@ void FSpatialSensingExtensionPICO::OnEvent(XrSession InSession, const XrEventDat
 	PollEvent(EventDataBuffer);
 }
 
-bool FSpatialSensingExtensionPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+void FSpatialSensingExtensionPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	OutExtensions.Add("XR_PICO_spatial_sensing");
-	OutExtensions.Add("XR_EXT_future");
-	return true;
+	OutExtensions.Add(XR_PICO_SPATIAL_SENSING_EXTENSION_NAME);
+	OutExtensions.Add(XR_EXT_FUTURE_EXTENSION_NAME);
 }
 
 void FSpatialSensingExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId InSystem)
@@ -58,7 +60,7 @@ void FSpatialSensingExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystem
 		XrSystemProperties SPSpatialSensing{ XR_TYPE_SYSTEM_PROPERTIES,&SpatialSensingPropertiesPICO };
 		XR_ENSURE(xrGetSystemProperties(InInstance, InSystem, &SPSpatialSensing));
 		bSupportsSpatialSensing = SpatialSensingPropertiesPICO.supportsSpatialSensing == XR_TRUE;
-		UE_LOG(LogMRPICO,Log, TEXT("bSupportsSpatialSensing:%d"), bSupportsSpatialSensing)
+		UE_LOG(LogMRPICO, VeryVerbose, TEXT("bSupportsSpatialSensing:%d"), bSupportsSpatialSensing)
 
 		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrCreateSenseDataProviderPICO", (PFN_xrVoidFunction*)&xrCreateSenseDataProviderPICO));
 		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrStartSenseDataProviderAsyncPICO", (PFN_xrVoidFunction*)&xrStartSenseDataProviderAsyncPICO));
@@ -80,6 +82,9 @@ void FSpatialSensingExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystem
 		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrDestroyAnchorPICO", (PFN_xrVoidFunction*)&xrDestroyAnchorPICO));
 		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrGetAnchorUuidPICO", (PFN_xrVoidFunction*)&xrGetAnchorUuidPICO));
 		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrLocateAnchorPICO", (PFN_xrVoidFunction*)&xrLocateAnchorPICO));
+
+		XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrReleaseEnvironmentTextureImagePICO", (PFN_xrVoidFunction*)&xrReleaseEnvironmentTextureImagePICO));
+
 	}
 }
 
@@ -93,6 +98,20 @@ void FSpatialSensingExtensionPICO::PostCreateSession(XrSession InSession)
 	}
 	
 	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddRaw(this, &FSpatialSensingExtensionPICO::ApplicationResumeDelegate);
+}
+
+void FSpatialSensingExtensionPICO::OnDestroySession(XrSession InSession)
+{
+	if (InSession != Session)
+	{
+		return;
+	}
+
+	FCoreDelegates::ApplicationHasEnteredForegroundDelegate.RemoveAll(this);
+	Session = XR_NULL_HANDLE;
+	TrackingSpace = XR_NULL_HANDLE;
+	CurrentDisplayTime = 0;
+	XRTrackingSystem = nullptr;
 }
 
 void FSpatialSensingExtensionPICO::UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace InTrackingSpace)
@@ -262,11 +281,18 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityLocation(const XrSenseDataSna
 	bool bResult = false;
 	if (bSupportsSpatialSensing)
 	{
+		if (TrackingSpace == XR_NULL_HANDLE || !HasValidTrackingSystem())
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrSpatialEntityLocationGetInfoPICO cComponentInfoGetInfo = {};
 		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_LOCATION_GET_INFO_PICO;
 		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_LOCATION_PICO;
 		cComponentInfoGetInfo.entity = EntityHandle;
 		cComponentInfoGetInfo.baseSpace = TrackingSpace;
+
 		XrSpatialEntityLocationDataPICO cComponentInfo = {};
 		cComponentInfo.type = XR_TYPE_SPATIAL_ENTITY_LOCATION_DATA_PICO;
 
@@ -311,6 +337,7 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntitySemantic(const XrSenseDataSna
 		if (bResult)
 		{
 			cComponentInfo.semanticCapacityInput = cComponentInfo.semanticCountOutput;
+			UE_LOG(LogMRPICO,VeryVerbose,TEXT("FSpatialSensingExtensionPICO::semanticCountOutput:%d"),cComponentInfo.semanticCountOutput);
 			TArray<XrSemanticLabelPICO> TempSemantics;
 			TempSemantics.SetNum(cComponentInfo.semanticCapacityInput);
 			cComponentInfo.semanticLabels = TempSemantics.GetData();
@@ -324,6 +351,7 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntitySemantic(const XrSenseDataSna
 			{
 				for (auto Semantic : TempSemantics)
 				{
+					UE_LOG(LogMRPICO,VeryVerbose,TEXT("Semantic:%d"),Semantic);
 					Semantics.Add(static_cast<ESemanticLabelPICO>(Semantic));
 				}
 			}
@@ -339,6 +367,12 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityBoundary3D(const XrSenseDataS
 	bool bResult = false;
 	if (bSupportsSpatialSensing)
 	{
+		if (!HasValidTrackingSystem())
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrSpatialEntityBoundingBox3DGetInfoPICO cComponentInfoGetInfo = {};
 		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_BOUNDING_BOX_3D_GET_INFO_PICO;
 		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_BOUNDING_BOX_3D_PICO;
@@ -378,6 +412,12 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityBoundary2D(const XrSenseDataS
 	bool bResult = false;
 	if (bSupportsSpatialSensing)
 	{
+		if (!HasValidTrackingSystem())
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrSpatialEntityBoundingBox2DGetInfoPICO cComponentInfoGetInfo = {};
 		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_BOUNDING_BOX_2D_GET_INFO_PICO;
 		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_BOUNDING_BOX_2D_PICO;
@@ -408,6 +448,12 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityPolygon(const XrSenseDataSnap
 	bool bResult = false;
 	if (bSupportsSpatialSensing)
 	{
+		if (!HasValidTrackingSystem())
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrSpatialEntityPolygonGetInfoPICO cComponentInfoGetInfo = {};
 		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_POLYGON_GET_INFO_PICO;
 		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_POLYGON_PICO;
@@ -451,6 +497,12 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityTriangleMesh(const XrSenseDat
 	bool bResult = false;
 	if (bSupportsSpatialSensing)
 	{
+		if (!HasValidTrackingSystem())
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrSpatialEntityTriangleMeshGetInfoPICO cComponentInfoGetInfo = {};
 		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_TRIANGLE_MESH_GET_INFO_PICO;
 		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_TRIANGLE_MESH_PICO;
@@ -493,6 +545,32 @@ bool FSpatialSensingExtensionPICO::GetSpatialEntityTriangleMesh(const XrSenseDat
 					Vertices.Add(VertexPose);
 				}
 			}
+		}
+
+		OutResult = CastToPICOResult(xrResult);
+	}
+	return bResult;
+}
+
+bool FSpatialSensingExtensionPICO::GetSpatialEntityPlaneOrientation(const XrSenseDataSnapshotPICO& SnapshotHandle, const XrSpatialEntityIdPICO& EntityHandle, EPlaneOrientationPICO& PlaneOrientationPICO, EResultPICO& OutResult)
+{
+	bool bResult = false;
+	if (bSupportsSpatialSensing)
+	{
+		XrSpatialEntityPlaneOrientationGetInfoPICO cComponentInfoGetInfo = {};
+		cComponentInfoGetInfo.type = XR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_GET_INFO_PICO;
+		cComponentInfoGetInfo.componentType = XR_SPATIAL_ENTITY_COMPONENT_TYPE_PLANE_ORIENTATION_PICO;
+		cComponentInfoGetInfo.entity = EntityHandle;
+		XrSpatialEntityPlaneOrientationDataPICO cComponentInfo = {};
+		cComponentInfo.type = XR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_DATA_PICO;
+		XrResult xrResult = xrGetSpatialEntityComponentDataPICO(SnapshotHandle
+																, reinterpret_cast<XrSpatialEntityComponentGetInfoBaseHeaderPICO*>(&cComponentInfoGetInfo)
+																, reinterpret_cast<XrSpatialEntityComponentDataBaseHeaderPICO*>(&cComponentInfo));
+		bResult = XR_SUCCEEDED(xrResult);
+
+		if (bResult)
+		{
+			PlaneOrientationPICO=static_cast<EPlaneOrientationPICO>(cComponentInfo.orientation);
 		}
 
 		OutResult = CastToPICOResult(xrResult);
@@ -561,10 +639,22 @@ void FSpatialSensingExtensionPICO::PollEvent(const XrEventDataBuffer* EventData)
 						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->MeshDataUpdatedDelegate.Broadcast();
 					}
 					break;
+				case EProviderTypePICO::Pico_Provider_Plane:
+					{
+						UE_LOG(LogMRPICO, VeryVerbose, TEXT("Pico_Provider_Plane DataUpdated"));
+						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->PlaneDataUpdatedDelegate.Broadcast();
+					}
+					break;
 				case EProviderTypePICO::Pico_Provider_Scene_Capture:
 					{
 						UE_LOG(LogMRPICO, VeryVerbose, TEXT("Pico_Provider_Scene_Capture DataUpdated"));
 						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->SceneCaptureDataUpdatedDelegate.Broadcast();
+					}
+					break;
+				case EProviderTypePICO::Pico_Provider_Light_Estimate:
+					{
+						UE_LOG(LogMRPICO, VeryVerbose, TEXT("Pico_Provider_Light_Estimate DataUpdated"));
+						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->LightEstimationDataUpdatedDelegate.Broadcast();
 					}
 					break;
 				default: ;
@@ -592,6 +682,16 @@ void FSpatialSensingExtensionPICO::PollEvent(const XrEventDataBuffer* EventData)
 				case EProviderTypePICO::Pico_Provider_Scene_Capture:
 					{
 						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->SceneCaptureServiceStateUpdatedDelegate.Broadcast(State);
+					}
+					break;
+				case EProviderTypePICO::Pico_Provider_Plane:
+					{
+						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->PlaneScanningStateUpdatedDelegate.Broadcast(State);
+					}
+					break;
+				case EProviderTypePICO::Pico_Provider_Light_Estimate:
+					{
+						UMRFunctionLibraryPICO::GetMRDelegateManagerPICO()->LightEstimationServiceStateUpdatedDelegate.Broadcast(State);
 					}
 					break;
 				default: ;
@@ -622,6 +722,16 @@ EProviderTypePICO FSpatialSensingExtensionPICO::GetProviderTypeByHandle(const Xr
 	if (FSceneCaptureExtensionPICO::GetInstance()->IsEqualProvider(Handle))
 	{
 		return EProviderTypePICO::Pico_Provider_Scene_Capture;
+	}
+
+	if (FSpatialPlaneExtensionPICO::GetInstance()->IsEqualProvider(Handle))
+	{
+		return EProviderTypePICO::Pico_Provider_Plane;
+	}
+
+	if (FLightEstimationExtensionPICO::GetInstance()->IsEqualProvider(Handle))
+	{
+		return EProviderTypePICO::Pico_Provider_Light_Estimate;
 	}
 
 	return EProviderTypePICO::Pico_Provider_Max;
@@ -689,42 +799,37 @@ FMixedRealityPICO::FMixedRealityPICO(): CurrentDisplayTime(0)
 {
 }
 
-void FMixedRealityPICO::Register()
-{
-	RegisterOpenXRExtensionModularFeature();
-}
-
-void FMixedRealityPICO::Unregister()
-{
-	UnregisterOpenXRExtensionModularFeature();
-}
-
-
 void FMixedRealityPICO::OnDestroySession(XrSession InSession)
 {
+	if (InSession != Session)
+	{
+		return;
+	}
+
 	if (IsHandleValid())
 	{
+		EResultPICO xrResult = EResultPICO::XR_Error_Unknown_PICO;
 		switch (GetSenseDataProviderState())
 		{
 		case EMRStatePICO::Initialized:
-			{
-				EResultPICO xrResult = EResultPICO::XR_Error_Unknown_PICO;
-				DestroyProvider(xrResult);
-			}
+			DestroyProvider(xrResult);
 			break;
 		case EMRStatePICO::Running:
-			{
-				EResultPICO xrResult = EResultPICO::XR_Error_Unknown_PICO;
-				if (StopProvider(xrResult))
-				{
-					DestroyProvider(xrResult);
-				}
-			}
+			StopProvider(xrResult);
+			DestroyProvider(xrResult);
 			break;
 		case EMRStatePICO::Stopped:
+			DestroyProvider(xrResult);
+			break;
+		default:
 			break;
 		}
 	}
+
+	Session = XR_NULL_HANDLE;
+	TrackingSpace = XR_NULL_HANDLE;
+	CurrentDisplayTime = 0;
+	XRTrackingSystem = nullptr;
 }
 
 void FMixedRealityPICO::PostCreateSession(XrSession InSession)
@@ -746,7 +851,9 @@ void FMixedRealityPICO::UpdateDeviceLocations(XrSession InSession, XrTime Displa
 bool FMixedRealityPICO::StartProvider(const FPICOPollFutureDelegate& StartSenseDataProviderDelegate, EResultPICO& OutResult)
 {
 	bool bResult = false;
-    if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
+    if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing()
+    	&& Session != XR_NULL_HANDLE
+    	&& ProviderHandle != XR_NULL_HANDLE)
     {
     	XrSenseDataProviderStartInfoPICO cSenseDataProviderStartInfoPICO = {};
     	cSenseDataProviderStartInfoPICO.type = XR_TYPE_SENSE_DATA_PROVIDER_START_INFO_PICO;
@@ -769,6 +876,12 @@ bool FMixedRealityPICO::StartProvider(const FPICOPollFutureDelegate& StartSenseD
 
 bool FMixedRealityPICO::StopProvider(EResultPICO& OutResult)
 {
+	if (ProviderHandle == XR_NULL_HANDLE)
+	{
+		OutResult = EResultPICO::XR_Success;
+		return true;
+	}
+
 	bool bResult = false;
 	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
 	{
@@ -782,6 +895,12 @@ bool FMixedRealityPICO::StopProvider(EResultPICO& OutResult)
 
 bool FMixedRealityPICO::DestroyProvider(EResultPICO& OutResult)
 {
+	if (ProviderHandle == XR_NULL_HANDLE)
+	{
+		OutResult = EResultPICO::XR_Success;
+		return true;
+	}
+
 	bool bResult = false;
 	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
 	{
@@ -806,7 +925,7 @@ EProviderTypePICO FMixedRealityPICO::GetProviderType()
 EMRStatePICO FMixedRealityPICO::GetSenseDataProviderState() const
 {
 	EMRStatePICO SenseDataProviderState = EMRStatePICO::Stopped;
-	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
+	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing() && ProviderHandle != XR_NULL_HANDLE)
 	{
 		XrSenseDataProviderStatePICO cPxrSenseDataProviderStateBD = {};
 		XrResult xrResult = FSpatialSensingExtensionPICO::GetInstance()->xrGetSenseDataProviderStatePICO(ProviderHandle, &cPxrSenseDataProviderStateBD);
@@ -814,4 +933,92 @@ EMRStatePICO FMixedRealityPICO::GetSenseDataProviderState() const
 	}
 	
 	return SenseDataProviderState;
+}
+
+void FSpatialSensingExtensionPICO::InitializeCachedLightEstimateInfoPico()
+{
+#if PLATFORM_ANDROID
+	CachedLightEstimationTextureVulkan= {
+		.type = XR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_VULKAN_PICO,
+		.next = nullptr
+	};
+
+	CachedLightEstimateInfoPico.type = XR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_DATA_PICO;
+	CachedLightEstimateInfoPico.next = &CachedLightEstimationTextureVulkan;
+	CachedLightEstimateInfoPico.state =XR_LIGHT_ESTIMATION_DATA_STATE_INVALID_PICO;
+#endif
+}
+
+void FSpatialSensingExtensionPICO::UpdateCachedLightEstimateInfoPico(
+	const XrSpatialEntityLightEstimationDataPICO& EntityLightEstimationInfo)
+{
+	CachedLightEstimateInfoPico = EntityLightEstimationInfo;
+}
+
+bool FSpatialSensingExtensionPICO::GetSpatialEntityLightEstimateData(const XrSenseDataSnapshotPICO& SnapshotHandle,
+                                                                     const XrSpatialEntityIdPICO& EntityHandle,const FIntPoint& Size,ULightEstimationTexturePICO* OutEnvironmentTexture,EResultPICO& OutResult)
+{
+	if (OutEnvironmentTexture)
+	{
+		if (CachedLightEstimateInfoPico.state==XR_LIGHT_ESTIMATION_DATA_STATE_VALID_PICO)
+		{
+#if PLATFORM_ANDROID
+			XrResult xrReleaseResult =xrReleaseEnvironmentTextureImagePICO(Session,reinterpret_cast<XrLightEstimationInfoBaseHeaderPICO*>(&CachedLightEstimationTextureVulkan));
+			 UE_LOG(LogMRPICO, Verbose, TEXT("xrReleaseEnvironmentTextureImagePICO xrReleaseResult:%d"),xrReleaseResult);
+			 bool bResult = XR_SUCCEEDED(xrReleaseResult);
+			 if (!bResult)
+			 {
+			 	UE_LOG(LogMRPICO, Error, TEXT("ReleaseEnvironmentTextureImage failed"));
+			 }
+#endif
+		}
+
+		InitializeCachedLightEstimateInfoPico();
+	}
+	else
+	{
+		UE_LOG(LogMRPICO, Error, TEXT("OutEnvironmentTexture null!"));
+		return false;
+	}
+	
+	
+	XrSpatialEntityLightEstimationGetInfoPICO xrLightEstimateGetInfoPico{
+		XR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_GET_INFO_PICO,
+		nullptr,
+		EntityHandle,
+		XR_SPATIAL_ENTITY_COMPONENT_TYPE_LIGHT_ESTIMATION_PICO,
+	};
+
+	XrSpatialEntityLightEstimationDataPICO TempLightEstimateInfoPico = GetCachedLightEstimateInfoPico();
+
+	
+	 XrResult xrResult =xrGetSpatialEntityComponentDataPICO(SnapshotHandle
+	 													 ,reinterpret_cast<XrSpatialEntityComponentGetInfoBaseHeaderPICO*>(&xrLightEstimateGetInfoPico)
+	 													 , reinterpret_cast<XrSpatialEntityComponentDataBaseHeaderPICO*>(&TempLightEstimateInfoPico));
+
+
+	if (TempLightEstimateInfoPico.state==XR_LIGHT_ESTIMATION_DATA_STATE_INVALID_PICO)
+	{
+		UE_LOG(LogMRPICO, Error, TEXT("XR_LIGHT_ESTIMATION_DATA_STATE_INVALID_PICO!"));
+		return false;
+	}
+	
+	bool bResult = XR_SUCCEEDED(xrResult);
+
+	UE_LOG(LogMRPICO, Verbose, TEXT("LightEstimationTexture xrGetSpatialEntityComponentDataPICO result: %d"), bResult);
+	UpdateCachedLightEstimateInfoPico(TempLightEstimateInfoPico);
+	if (bResult)
+	{
+#if PLATFORM_ANDROID
+		bResult =OutEnvironmentTexture->UpdateVulkanTextureByLightEstimateInfo(Size,GetCachedLightEstimationTextureVulkan());
+		if (!bResult)
+		{
+			UE_LOG(LogMRPICO, Error, TEXT("UpdateCachedLightEstimateInfoPico failed!"));
+		}
+#endif
+	}
+	
+	OutResult=CastToPICOResult(xrResult);
+
+	return bResult;
 }

@@ -261,7 +261,13 @@ PVRP_EXPORT int Pxr_PersistSpatialAnchorComplete(uint64_t provider, uint64_t fut
 PVRP_EXPORT int Pxr_UnpersistSpatialAnchorAsync(uint64_t provider,PxrSpatialAnchorUnpersistInfo *info,uint64_t *future);
 PVRP_EXPORT int Pxr_UnpersistSpatialAnchorComplete(uint64_t provider,uint64_t future, PxrSpatialAnchorUnpersistCompletion *completion);
 
-
+/*
+ * mr sdk 3.0 light estimation
+*/
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTextureResolutions(uint32_t resolutionCapacityInput, uint32_t* resolutionCountOutput, PxrEnvironmentTextureResolution* resolutions);
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTexturePixelFormats(uint32_t pixelFormatCapacityInput, uint32_t* pixelFormatCountOutput, PxrEnvironmentTexturePixelFormat* pixelFormats);
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTextureTransferTypes(uint32_t transferTypeCapacityInput, uint32_t* transferTypeCountOutput, PxrEnvironmentTextureTransferType* transferTypes);
+PVRP_EXPORT int Pxr_ReleaseEnvironmentTextureImage(PxrLightEstimationInfoBaseHeader* texture);
 /**
  *  mr sdk 3.0 scene capture
  */
@@ -279,6 +285,20 @@ PVRP_EXPORT int Pxr_ShareSpatialAnchorAsync(uint64_t provider, PxrSpatialAnchorS
 PVRP_EXPORT int Pxr_ShareSpatialAnchorComplete(uint64_t provider, uint64_t future, PxrSpatialAnchorShareCompletion *completion);
 PVRP_EXPORT int Pxr_DownloadSharedSpatialAnchorAsync(uint64_t provider, PxrSharedSpatialAnchorDownloadInfo *downloadInfo, uint64_t *future);
 PVRP_EXPORT int Pxr_DownloadSharedSpatialAnchorComplete(uint64_t provider, uint64_t future, PxrSharedSpatialAnchorDownloadCompletion *completion);
+	
+/*
+ * mr sdk 3.0 environment depth
+*/
+PVRP_EXPORT int Pxr_CreateEnvironmentDepthProvider(PxrEnvironmentDepthProviderCreateInfo* createInfo, uint64_t *environmentDepthProviderHandle);
+PVRP_EXPORT int Pxr_DestroyEnvironmentDepthProvider(uint64_t environmentDepthProviderHandle);
+PVRP_EXPORT int Pxr_StartEnvironmentDepthProvider(uint64_t environmentDepthProviderHandle);
+PVRP_EXPORT int Pxr_StopEnvironmentDepthProvider(uint64_t environmentDepthProviderHandle);
+PVRP_EXPORT int Pxr_CreateEnvironmentDepthSwapchain(uint64_t environmentDepthProviderHandle, PxrEnvironmentDepthSwapchainCreateInfo *createInfo, uint64_t *swapchainHandle);
+PVRP_EXPORT int Pxr_DestroyEnvironmentDepthSwapchain(uint64_t swapchainHandle);
+PVRP_EXPORT int Pxr_EnumerateEnvironmentDepthSwapchainImages(uint64_t swapchainHandle, uint32_t imageCapacityInput, uint32_t* imageCountOutput, uint64_t* images);
+PVRP_EXPORT int Pxr_GetEnvironmentDepthSwapchainState(uint64_t swapchainHandle, PxrEnvironmentDepthSwapchainState* state);
+PVRP_EXPORT int Pxr_AcquireEnvironmentDepthImage(uint64_t environmentDepthProviderHandle, PxrEnvironmentDepthImageAcquireInfo* acquireInfo, PxrEnvironmentDepthImage* environmentDepthImage);
+PVRP_EXPORT int Pxr_SetEnvironmentDepthHandRemoval(uint64_t swapchainHandle, PxrEnvironmentDepthHandRemovalSetInfo* setInfo);
 //----------------MR 3.0------------------
 	
 //----------------ETFR------------------

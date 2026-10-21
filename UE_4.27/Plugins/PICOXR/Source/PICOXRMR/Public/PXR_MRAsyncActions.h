@@ -35,6 +35,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICOLaunchSceneCaptureAppActionFail
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSpatialMeshActionSuccess,EPICOResult, Result, const TArray<FPICOSpatialMeshInfo>&, MeshInfos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSpatialMeshActionFailure,EPICOResult, Result);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSpatialPlaneActionSuccess,EPICOResult, Result, const TArray<FPICOSpatialPlaneInfo>&, PlaneInfos);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSpatialPlaneActionFailure,EPICOResult, Result);
+
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSceneCapturesActionSuccess,EPICOResult, Result, const TArray<FPICOMRSceneInfo>&, SceneInfos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSceneCapturesActionFailure,EPICOResult, Result);
 
@@ -385,6 +389,66 @@ public:
 private:
 	void HandleRequestSpatialMeshComplete(const FPICOSpatialHandle& FutureHandle);
 };
+//////////////////////////////////////////////////////////////////////////
+/// Spatial Plane
+//////////////////////////////////////////////////////////////////////////
+/* UAsyncTask_LaunchMRPlane
+ *****************************************************************************/
+UCLASS()
+class PICOXRMR_API UPICOLaunchSpatialPlaneScanning_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	/// <summary>
+	/// Launches Spatial Plane scanning.
+	/// </summary>
+	/// <returns>
+	/// Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UPICOLaunchSpatialPlaneScanning_AsyncAction* PXR_LaunchSpatialPlaneScanning_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionSuccess OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionFailure OnFailure;
+
+private:
+	void HandleLaunchPlaneScanningComplete(const FPICOSpatialHandle& FutureHandle);
+};
+
+/* UAsyncTask_RequestSpatialPlane
+ *****************************************************************************/
+UCLASS()
+class PICOXRMR_API UPICORequestSpatialPlane_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	/// <summary>
+	/// Requests Spatial Plane Infos.
+	/// </summary>
+	/// <returns>
+	/// - Result: Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// - PlaneInfos:An array of SpatialPlaneInfo, contains Plane UUID, pose, vertices, indices and so on.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UPICORequestSpatialPlane_AsyncAction* PXR_RequestSpatialPlaneInfos_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestSpatialPlaneActionSuccess OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestSpatialPlaneActionFailure OnFailure;
+
+private:
+	void HandleRequestSpatialPlaneComplete(const FPICOSpatialHandle& FutureHandle);
+};
+
 //////////////////////////////////////////////////////////////////////////
 /// Scene Capture
 //////////////////////////////////////////////////////////////////////////

@@ -16,10 +16,6 @@ FPICOOpenXRPassthrough::FPICOOpenXRPassthrough()
 	: Session(XR_NULL_HANDLE)
 	, bSupportPassthroughEXT(false)
 {
-	BlendState.srcFactorColor = XR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA_FB;
-	BlendState.dstFactorColor = XR_BLEND_FACTOR_SRC_ALPHA_FB;
-	BlendState.srcFactorAlpha = XR_BLEND_FACTOR_ONE_FB;
-	BlendState.dstFactorAlpha = XR_BLEND_FACTOR_ZERO_FB;
 }
 
 void FPICOOpenXRPassthrough::Register()
@@ -34,24 +30,10 @@ void FPICOOpenXRPassthrough::Unregister()
 
 bool FPICOOpenXRPassthrough::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableVST"))
+	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey(TEXT("bEnableVST")))
 	{
-		OutExtensions.Add("XR_FB_passthrough");
-		OutExtensions.Add("XR_FB_triangle_mesh");
-
-		if (IConsoleVariable* OpenXRInvertAlphaCVar = IConsoleManager::Get().FindConsoleVariable(TEXT("xr.OpenXRInvertAlpha")))
-		{
-			if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableLayerDepth"))
-			{
-				OpenXRInvertAlphaCVar->Set(false);
-				bSupportLayerDepth = true;
-			}
-			else
-			{
-				OpenXRInvertAlphaCVar->Set(true);
-				bSupportLayerDepth = false;
-			}
-		}
+		OutExtensions.Add(XR_FB_PASSTHROUGH_EXTENSION_NAME);
+		OutExtensions.Add(XR_FB_TRIANGLE_MESH_EXTENSION_NAME);
 
 		return true;
 	}
@@ -70,7 +52,7 @@ void FPICOOpenXRPassthrough::PostGetSystem(XrInstance InInstance, XrSystemId InS
 		bCurrentDeviceSupportedPassthrough = (passthroughSystemProperties.capabilities & XR_PASSTHROUGH_CAPABILITY_BIT_FB) == XR_PASSTHROUGH_CAPABILITY_BIT_FB;
 		bPassthroughSupportColor = bCurrentDeviceSupportedPassthrough && (passthroughSystemProperties.capabilities & XR_PASSTHROUGH_CAPABILITY_COLOR_BIT_FB) == XR_PASSTHROUGH_CAPABILITY_COLOR_BIT_FB;
 		bPassthroughSupportDepth = bCurrentDeviceSupportedPassthrough && (passthroughSystemProperties.capabilities & XR_PASSTHROUGH_CAPABILITY_LAYER_DEPTH_BIT_FB) == XR_PASSTHROUGH_CAPABILITY_LAYER_DEPTH_BIT_FB;
-		UE_LOG(LogPassthroughPICO, Log, TEXT("bCurrentDeviceSupportedPassthrough:%d,bPassthroughSupportColor:%d,bPassthroughSupportDepth:%d"), bCurrentDeviceSupportedPassthrough, bPassthroughSupportColor, bPassthroughSupportDepth);
+		UE_LOG(LogPassthroughPICO, Verbose, TEXT("bCurrentDeviceSupportedPassthrough:%d,bPassthroughSupportColor:%d,bPassthroughSupportDepth:%d"), bCurrentDeviceSupportedPassthrough, bPassthroughSupportColor, bPassthroughSupportDepth);
 		if (bCurrentDeviceSupportedPassthrough)
 		{
 			XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrCreatePassthroughFB", (PFN_xrVoidFunction*)(&pfnXrCreatePassthroughFBX)));
@@ -224,31 +206,6 @@ void FPICOOpenXRPassthrough::OnBeginRendering_RenderThread(XrSession InSession, 
 				passthroughCompLayers_RHIThread = passthroughLayers_RenderThread;
 			});
 	}
-}
-
-const void* FPICOOpenXRPassthrough::OnEndProjectionLayer_RHIThread(XrSession InSession, int32 InLayerIndex, const void* InNext, XrCompositionLayerFlags& OutFlags)
-{
-	bool bHasBackgroundLayer = false;
-	for (const FPassthroughLayer& Layer : passthroughCompLayers_RHIThread)
-	{
-		if (Layer.IsBackgroundLayer() || Layer.PassthroughSupportsDepth())
-		{
-			bHasBackgroundLayer = true;
-			break;
-		}
-	}
-
-	if (bHasBackgroundLayer || bIsAR)
-	{
-		OutFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-
-		if (bSupportLayerDepth)
-		{
-			BlendState.next = const_cast<void*>(InNext);
-			InNext = &BlendState;
-		}
-	}
-	return InNext;
 }
 
 void FPICOOpenXRPassthrough::UpdatePassthroughStyle_RenderThread(XrPassthroughLayerFB LayerHandle, const FVSTEdgeStyleParametersPICO& EdgeStyleParameters)

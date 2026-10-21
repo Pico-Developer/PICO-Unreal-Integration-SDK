@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.5.2",
+	"VersionName": "6.0.0",
 	"FriendlyName": "PICO OpenXR",
 	"Description": "PICO OpenXR plugin provides support for OpenXR extensions.",
 	"Category": "Virtual Reality",
@@ -13,6 +13,7 @@
 	"EngineVersion": "5.6.0",
 	"EnabledByDefault": false,
 	"CanContainContent": true,
+	"IsBetaVersion": false,
 	"Installed": true,
 	"SupportedTargetPlatforms": [
 		"Win64",
@@ -116,6 +117,15 @@
 				"Win64",
 				"Linux",
 				"Mac"
+			]
+		},
+		{
+			"Name": "PICOOpenXRPortal",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux"
 			]
 		}
 	],

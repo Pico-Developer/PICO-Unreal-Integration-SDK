@@ -10,7 +10,7 @@
 #include "GameFramework/WorldSettings.h"
 #include "Engine/World.h"
 #include "IXRTrackingSystem.h"
-
+#include "Engine/Engine.h"
 #include "PXR_HMDModule.h"
 #include "PXR_HMDPrivate.h"
 

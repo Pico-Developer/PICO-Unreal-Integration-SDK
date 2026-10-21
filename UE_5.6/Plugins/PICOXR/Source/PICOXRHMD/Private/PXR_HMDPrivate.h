@@ -106,6 +106,11 @@ FORCEINLINE FVector ToFVector(const PxrVector3f& InVec)
 	return FVector(-InVec.z, InVec.x, InVec.y);
 }
 
+FORCEINLINE FVector ToFVector(PxrVector3f Vector, float Scale)
+{
+	return FVector(-Vector.z * Scale, Vector.x * Scale, Vector.y * Scale);
+}
+
 FORCEINLINE PxrVector3f ToPxrVector3f(const FVector& InVec)
 {
 	return PxrVector3f{ float(InVec.Y), float(InVec.Z), float(-InVec.X) };

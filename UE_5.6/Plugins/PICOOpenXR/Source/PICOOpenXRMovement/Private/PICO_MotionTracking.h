@@ -4,27 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "PICO_MovementFunctionLibrary.h"
-#include "IOpenXRExtensionPlugin.h"
 
-class FMotionTrackingPICO : public IOpenXRExtensionPlugin
+class FMotionTrackingPICO
 {
 public:
 	FMotionTrackingPICO();
 	virtual ~FMotionTrackingPICO() {}
 
-	void Register();
-	void Unregister();
-
-	/** IOpenXRExtensionPlugin */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("MotionTrackingPICO"));
-	}
-	virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual const void* OnGetSystem(XrInstance InInstance, const void* InNext) override;
-	virtual void PostCreateSession(XrSession InSession) override;
-	virtual void OnEvent(XrSession InSession, const XrEventDataBaseHeader* InHeader) override;
-	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace) override;
+	void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	const void* OnGetSystem(XrInstance InInstance, const void* InNext);
+	void PostCreateSession(XrSession InSession);
+	void OnEvent(XrSession InSession, const XrEventDataBaseHeader* InHeader);
+	void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace);
 
 	bool RequestMotionTrackerDevice(int DeviceCount);
 	bool GetMotionTrackerBatteryState(int64 ID, float& BatteryLevel, EChargingStatePICO& State);
@@ -33,8 +24,8 @@ public:
 private:
 	class IXRTrackingSystem* XRTrackingSystem = nullptr;
 	XrSession Session = XR_NULL_HANDLE;
-	XrTime PredictedTime;
-	XrSpace BaseSpace;
+	XrTime PredictedTime = 0;
+	XrSpace BaseSpace = XR_NULL_HANDLE;
 	bool bSupportMotionTracking = false;
 
 	PFN_xrRequestMotionTrackerDevicePICO xrRequestMotionTrackerDevicePICO = nullptr;

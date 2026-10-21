@@ -22,6 +22,7 @@ public class PICOXRMR : ModuleRules
             new string[]
             {
                 "Core",
+                "RHICore",
                 "CoreUObject",
                 "Engine",
                 "InputCore",
@@ -46,6 +47,21 @@ public class PICOXRMR : ModuleRules
                 Path.Combine(ModuleDirectory, "../PICOXRHMD/Private"),
                 Path.Combine(ModuleDirectory, "../PICOXRInput/Private"),
             });
+        
+        var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
+
+        PrivateIncludePaths.AddRange(
+            new[] {
+                Path.Combine(EngineDir, "Source/Runtime/VulkanRHI/Private"),
+            });
+        
+        // Vulkan
+        AddEngineThirdPartyPrivateStaticDependencies(Target, "Vulkan");
+        
+        if (Target.Platform != UnrealTargetPlatform.Win64)
+        {
+            PrivateIncludePaths.Add(Path.Combine(EngineDir, "Source/Runtime/VulkanRHI/Private/") + Target.Platform);
+        }
     }
 }
 

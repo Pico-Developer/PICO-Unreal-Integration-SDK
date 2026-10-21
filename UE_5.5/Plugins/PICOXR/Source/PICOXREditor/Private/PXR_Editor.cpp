@@ -132,7 +132,7 @@ void FPICOXREditorModule::PluginButtonClicked()
 
 void FPICOXREditorModule::LaunchAPIReferenceURL()
 {
-	FPlatformProcess::LaunchURL(TEXT("https://developer-cn.pico-interactive.com/reference/unreal/latest/"), NULL, NULL);
+	FPlatformProcess::LaunchURL(TEXT("https://developer.picoxr.com/reference/unreal/client-api/"), NULL, NULL);
 }
 
 void FPICOXREditorModule::LaunchSampleDemoURL()
@@ -142,7 +142,7 @@ void FPICOXREditorModule::LaunchSampleDemoURL()
 
 void FPICOXREditorModule::LaunchOfficialWebsiteURL()
 {
-	FPlatformProcess::LaunchURL(TEXT("https://developer-cn.pico-interactive.com/resources/#sdk"), NULL, NULL);
+	FPlatformProcess::LaunchURL(TEXT("https://developer.picoxr.com/resources/"), NULL, NULL);
 }
 
 void FPICOXREditorModule::LaunchMarketplaceURL()

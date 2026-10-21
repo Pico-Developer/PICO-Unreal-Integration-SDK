@@ -173,6 +173,7 @@ void APICOXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent(EPICOResult 
 
 void APICOXRSpatialMeshActor::EndPlay(EEndPlayReason::Type Reason)
 {
+	Super::EndPlay(Reason);
 	ClearMesh();
 }
 
@@ -249,14 +250,13 @@ bool APICOXRSpatialMeshActor::UpdateMeshByMeshInfo(UPICOSpatialMeshComponent* Sp
 {
 	if (SpatialMesh)
 	{
-		TArray<int32> TempIndices;
+		TArray<MRMESH_INDEX_TYPE> TempIndices;
 		TArray<FVector> TempVertices;
-		TArray<FLinearColor> VertexColors;
+		TArray<FColor> VertexColors;
 		const UPICOXRSettings* Settings = GetDefault<UPICOXRSettings>();
 		TArray<FVector> EmptyNormals;
 		TArray<FVector2D> EmptyUV;
-		TArray<FProcMeshTangent> EmptyTangents;
-		SpatialMesh->SetWorldLocationAndRotation(MeshInfo.MeshPose.GetLocation(), MeshInfo.MeshPose.GetRotation());
+
 		if (Settings->bSemanticsAlignWithTriangle)
 		{
 			int32 ColorCount = MeshInfo.Semantics.Num();
@@ -301,7 +301,6 @@ bool APICOXRSpatialMeshActor::UpdateMeshByMeshInfo(UPICOSpatialMeshComponent* Sp
 		else
 		{
 			TempVertices = MeshInfo.Vertices;
-			TempIndices = MeshInfo.Indices;
 			if (Settings->bSemanticsAlignWithVertex)
 			{
 				for (int32 Index = 0; Index < MeshInfo.Semantics.Num(); ++Index)
@@ -316,22 +315,21 @@ bool APICOXRSpatialMeshActor::UpdateMeshByMeshInfo(UPICOSpatialMeshComponent* Sp
 					SpatialMesh->AddIndexToSemanticLabel(Index, SemanticLabel);
 				}
 			}
+
+			if (MeshInfo.Vertices.Num() && MeshInfo.Indices.Num())
+			{
+				TempIndices.Empty(MeshInfo.Indices.Num());
+				Algo::Transform(MeshInfo.Indices, TempIndices, [](const auto& Indice) { return static_cast<MRMESH_INDEX_TYPE>(Indice); });
+			}
 		}
-		
+
 		if (TempVertices.Num() && TempIndices.Num())
 		{
-			//Create or update the mesh depending on if we've been created before
-			if (SpatialMesh->GetNumSections() > 0 && SpatialMesh->IsEqualWithCached(TempIndices))
-			{
-				SpatialMesh->UpdateMeshSection_LinearColor(0, TempVertices, EmptyNormals, EmptyUV, VertexColors, EmptyTangents);
-			}
-			else
-			{
-				SpatialMesh->CreateMeshSection_LinearColor(0, TempVertices, TempIndices, EmptyNormals, EmptyUV, VertexColors, EmptyTangents, CollisionType != ECollisionEnabled::Type::NoCollision);
-				SpatialMesh->SetCachedIndices(TempIndices);
-			}
+			SpatialMesh->UpdateMesh(MeshInfo.MeshPose.GetLocation(), MeshInfo.MeshPose.GetRotation(),
+			                        FVector(1, 1, 1), TempVertices, TempIndices, TArray<FVector2D>(), TArray<FPackedNormal>(), VertexColors);
 		}
-		return true;
 	}
+
+
 	return false;
 }

@@ -9,6 +9,7 @@
 #include "PXR_MRAsyncActions.h"
 #include "PXR_ProviderManager.h"
 #include "PXR_Log.h"
+#include "PXR_SpatialMeshComponent.h"
 #include "Algo/Transform.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/Material.h"
@@ -96,6 +97,7 @@ void APICOXRSpatialMeshActor::Tick(float DeltaTime)
 				PXR_LOGV(PxrMR, "EntityToMeshMap Emplace UUID:%s", *MeshInfo.UUID.ToString());
 
 				UpdateMeshByMeshInfo(SpatialMesh, MeshInfo);
+				OnSpatialMeshChangedEvent.Broadcast(EPICOSpatialMeshState::Added, MeshInfo, SpatialMesh);
 			}
 			break;
 		case EPICOSpatialMeshState::Stable:
@@ -110,6 +112,7 @@ void APICOXRSpatialMeshActor::Tick(float DeltaTime)
 						continue;
 					}
 					UpdateMeshByMeshInfo(EntityToMeshMap[MeshInfo.UUID], MeshInfo);
+					OnSpatialMeshChangedEvent.Broadcast(EPICOSpatialMeshState::Updated,MeshInfo, EntityToMeshMap[MeshInfo.UUID]);
 				}
 			}
 			break;
@@ -119,6 +122,7 @@ void APICOXRSpatialMeshActor::Tick(float DeltaTime)
 					&& EntityToMeshMap[MeshInfo.UUID] != nullptr)
 				{
 					PXR_LOGV(PxrMR, "EntityToMeshMap Contains UUID:%s", *MeshInfo.UUID.ToString());
+					OnSpatialMeshChangedEvent.Broadcast(EPICOSpatialMeshState::Removed, MeshInfo, EntityToMeshMap[MeshInfo.UUID]);
 
 					EntityToMeshMap[MeshInfo.UUID]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 					EntityToMeshMap[MeshInfo.UUID]->DestroyComponent();
@@ -173,6 +177,7 @@ void APICOXRSpatialMeshActor::HandleRequestSpatialMeshContentsEvent(EPICOResult 
 
 void APICOXRSpatialMeshActor::EndPlay(EEndPlayReason::Type Reason)
 {
+	Super::EndPlay(Reason);
 	ClearMesh();
 }
 
@@ -229,6 +234,7 @@ bool APICOXRSpatialMeshActor::ClearMesh()
 	{
 		if (Pair.Value)
 		{
+			OnSpatialMeshChangedEvent.Broadcast(EPICOSpatialMeshState::Removed, FPICOSpatialMeshInfo(), Pair.Value);
 			Pair.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Pair.Value->DestroyComponent();
 		}

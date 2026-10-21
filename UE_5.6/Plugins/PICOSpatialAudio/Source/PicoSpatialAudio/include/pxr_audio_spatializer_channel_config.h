@@ -53,7 +53,6 @@ typedef enum {
     PASP_AMBIX = 1,
     PASP_AMBIX_WITH_HEADLOCK = 2,
     PASP_FUMA = 3,
-    PASP_TBE = 4,
 } PxrAudioSpatializer_ChannelConfig;
 
 typedef uint32_t PxrAudioSpatializer_ChannelMask;
@@ -164,8 +163,7 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 #define PASP_SURROUND_INDEX_7_1_SL (6)
 #define PASP_SURROUND_INDEX_7_1_SR (7)
 /// 5.1.2 = FL+FR+FC+LFE+BL+BR+TSL+TSR
-#define PASP_SURROUND_SETUP_5_1_2 \
-    (PASP_SURROUND_SETUP_5_1 | PASP_SURROUND_TOP_SIDE_LEFT | PASP_SURROUND_TOP_SIDE_RIGHT)
+#define PASP_SURROUND_SETUP_5_1_2 (PASP_SURROUND_SETUP_5_1 | PASP_SURROUND_TOP_SIDE_LEFT | PASP_SURROUND_TOP_SIDE_RIGHT)
 #define PASP_SURROUND_INDEX_5_1_2_FL (0)
 #define PASP_SURROUND_INDEX_5_1_2_FR (1)
 #define PASP_SURROUND_INDEX_5_1_2_FC (2)
@@ -175,7 +173,7 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 #define PASP_SURROUND_INDEX_5_1_2_TSL (6)
 #define PASP_SURROUND_INDEX_5_1_2_TSR (7)
 /// 5.1.4 = FL+FR+FC+LFE+BL+BR+TFL+TFR+TBL+TBR
-#define PASP_SURROUND_SETUP_5_1_4                                                                       \
+#define PASP_SURROUND_SETUP_5_1_4                                                             \
     (PASP_SURROUND_SETUP_5_1 | PASP_SURROUND_TOP_FRONT_LEFT | PASP_SURROUND_TOP_FRONT_RIGHT | \
      PASP_SURROUND_TOP_BACK_LEFT | PASP_SURROUND_TOP_BACK_RIGHT)
 #define PASP_SURROUND_INDEX_5_1_4_FL (0)
@@ -189,8 +187,7 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 #define PASP_SURROUND_INDEX_5_1_4_TBL (8)
 #define PASP_SURROUND_INDEX_5_1_4_TBR (9)
 /// 7.1.4 = FL+FR+FC+LFE+BL+BR+SL+SR+TSL+TSR
-#define PASP_SURROUND_SETUP_7_1_2 \
-    (PASP_SURROUND_SETUP_7_1 | PASP_SURROUND_TOP_SIDE_LEFT | PASP_SURROUND_TOP_SIDE_RIGHT)
+#define PASP_SURROUND_SETUP_7_1_2 (PASP_SURROUND_SETUP_7_1 | PASP_SURROUND_TOP_SIDE_LEFT | PASP_SURROUND_TOP_SIDE_RIGHT)
 #define PASP_SURROUND_INDEX_7_1_2_FL (0)
 #define PASP_SURROUND_INDEX_7_1_2_FR (1)
 #define PASP_SURROUND_INDEX_7_1_2_FC (2)
@@ -202,7 +199,7 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 #define PASP_SURROUND_INDEX_7_1_2_TSL (8)
 #define PASP_SURROUND_INDEX_7_1_2_TSR (9)
 /// 7.1.4 = FL+FR+FC+LFE+BL+BR+SL+SR+TFL+TFR+TBL+TBR
-#define PASP_SURROUND_SETUP_7_1_4                                                                       \
+#define PASP_SURROUND_SETUP_7_1_4                                                             \
     (PASP_SURROUND_SETUP_7_1 | PASP_SURROUND_TOP_FRONT_LEFT | PASP_SURROUND_TOP_FRONT_RIGHT | \
      PASP_SURROUND_TOP_BACK_LEFT | PASP_SURROUND_TOP_BACK_RIGHT)
 #define PASP_SURROUND_INDEX_7_1_4_FL (0)
@@ -229,9 +226,5 @@ typedef uint32_t PxrAudioSpatializer_ChannelMask;
 
 /// Pico Spatial Audio Fuma Channel Mask
 #define PASP_FUMA_ORDER_1 (1)
-
-/// Pico Spatial Audio TBE Channel Mask
-#define PASP_TBE_8 (1)
-#define PASP_TBE_8_2 (2)
 
 #endif  //  PXR_AUDIO_SPATIALIZER_CHANNEL_CONFIG_H

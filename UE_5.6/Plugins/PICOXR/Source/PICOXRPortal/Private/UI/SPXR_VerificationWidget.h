@@ -6,6 +6,10 @@
 #include "DetailColumnSizeData.h"
 #include "PXR_VerificationObject.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Images/SImage.h"
 
 UENUM(BlueprintType)
 enum class EVerificationsStatus : uint8

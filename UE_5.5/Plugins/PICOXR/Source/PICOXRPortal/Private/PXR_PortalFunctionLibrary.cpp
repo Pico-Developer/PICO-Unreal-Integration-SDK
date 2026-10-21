@@ -10,6 +10,7 @@
 #include "PXR_PortalSubsystem.h"
 #include "PXR_PortalSettings.h"
 #include "Interfaces/IPluginManager.h"
+#include "Engine/Engine.h"
 
 bool UPICOXRPortalFunctionLibrary::bShowRestartEditorButton = false;
 FString UPICOXRPortalFunctionLibrary::XRPortal = "PICOXRPortal";

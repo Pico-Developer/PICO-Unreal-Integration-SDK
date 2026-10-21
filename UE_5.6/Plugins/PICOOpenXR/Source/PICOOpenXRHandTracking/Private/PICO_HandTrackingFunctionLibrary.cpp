@@ -7,7 +7,7 @@
 
 bool UHandTrackingFunctionLibraryPICO::StartHandTrackingPICO()
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		return HandTrackingPICO->StartHandTracking();
@@ -17,7 +17,7 @@ bool UHandTrackingFunctionLibraryPICO::StartHandTrackingPICO()
 
 void UHandTrackingFunctionLibraryPICO::StopHandTrackingPICO()
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		HandTrackingPICO->StopHandTracking();
@@ -26,7 +26,7 @@ void UHandTrackingFunctionLibraryPICO::StopHandTrackingPICO()
 
 bool UHandTrackingFunctionLibraryPICO::UpdateHandTrackingDataPICO()
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		return HandTrackingPICO->UpdateHandTrackingData();
@@ -36,17 +36,17 @@ bool UHandTrackingFunctionLibraryPICO::UpdateHandTrackingDataPICO()
 
 bool UHandTrackingFunctionLibraryPICO::IsHandTrackingSupportPICO()
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
-		return HandTrackingPICO->IsHandTrackingStateValid();
+		return HandTrackingPICO->IsHandTrackingSupportedByDevice();
 	}
 	return false;
 }
 
 bool UHandTrackingFunctionLibraryPICO::IsHandTrackingRunningPICO()
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		return HandTrackingPICO->IsHandTrackingRunning();
@@ -56,7 +56,7 @@ bool UHandTrackingFunctionLibraryPICO::IsHandTrackingRunningPICO()
 
 bool UHandTrackingFunctionLibraryPICO::GetHandTrackingDataPICO(EControllerHand Hand, TArray<FVector>& OutPositions, TArray<FQuat>& OutRotations, TArray<float>& OutRadii, TArray<FVector>& LinearVelocity, TArray<FVector>& AngularVelocity, float& Scale)
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		return HandTrackingPICO->GetHandTrackingData(Hand, OutPositions, OutRotations, OutRadii, LinearVelocity, AngularVelocity, Scale);
@@ -66,7 +66,7 @@ bool UHandTrackingFunctionLibraryPICO::GetHandTrackingDataPICO(EControllerHand H
 
 bool UHandTrackingFunctionLibraryPICO::GetHandTrackingMeshScalePICO(EControllerHand Hand, float& Scale)
 {
-	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetInputDevice().Get());
+	FHandTrackingPICO* HandTrackingPICO = static_cast<FHandTrackingPICO*>(IPICOOpenXRHandTrackingModule::Get().GetHandTrackingPICO());
 	if (HandTrackingPICO)
 	{
 		return HandTrackingPICO->GetHandTrackingMeshScale(Hand, Scale);

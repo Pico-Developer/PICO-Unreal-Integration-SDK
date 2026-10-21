@@ -50,17 +50,15 @@ public:
 	virtual void GetGraphics() override
 	{
 #if PLATFORM_ANDROID
-		PXR_LOGI(PxrUnreal, "GetVulkanGraphics");
-		FVulkanDevice* Device = GVulkanRHI->GetDevice();
-		FVulkanQueue* Queue = Device->GetGraphicsQueue();
-
+		PXR_LOGI(PxrUnreal, "GetIVulkanDynamicRHI");
+		IVulkanDynamicRHI* VulkanRHI = GetIVulkanDynamicRHI();
 		PxrVulkanBinding vulkanBinding = {};
-		vulkanBinding.instance = GVulkanRHI->GetInstance();
-		vulkanBinding.physicalDevice = Device->GetPhysicalHandle();
-		vulkanBinding.device = Device->GetInstanceHandle();
-		vulkanBinding.queueFamilyIndex = Queue->GetFamilyIndex();
+		vulkanBinding.next = nullptr;
+		vulkanBinding.instance = VulkanRHI->RHIGetVkInstance();
+		vulkanBinding.physicalDevice = VulkanRHI->RHIGetVkPhysicalDevice();
+		vulkanBinding.device = VulkanRHI->RHIGetVkDevice();
+		vulkanBinding.queueFamilyIndex = VulkanRHI->RHIGetGraphicsQueueFamilyIndex();
 		vulkanBinding.queueIndex = 0;
-
 		FPICOXRHMDModule::GetPluginWrapper().CreateVulkanSystem(&vulkanBinding);
 #endif
 	}

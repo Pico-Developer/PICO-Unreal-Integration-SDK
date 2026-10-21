@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 #include "CoreMinimal.h"
@@ -14,11 +14,16 @@
 //MR
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRAnchorDataUpdatedDelegate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRMeshDataUpdatedDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRPlaneDataUpdatedDelegate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRSceneCaptureDataUpdatedDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRLightEstimationDataUpdatedDelegate);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRAnchorServiceStateUpdatedDelegate,EMRStatePICO,State);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRMeshScanningStateUpdatedDelegate,EMRStatePICO,State);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRSceneCaptureServiceStateUpdatedDelegate,EMRStatePICO,State);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRPlaneScanningStateUpdatedDelegate,EMRStatePICO,State);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRLightEstimationServiceStateUpdatedDelegate,EMRStatePICO,State);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRVSTDisplayChangedDelegate,EVSTDisplayStatusPICO,Status);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRResume);
 
@@ -35,8 +40,14 @@ public:
 	FPXRMeshDataUpdatedDelegate MeshDataUpdatedDelegate;
 
 	UPROPERTY(BlueprintAssignable)
+	FPXRPlaneDataUpdatedDelegate PlaneDataUpdatedDelegate;
+
+	UPROPERTY(BlueprintAssignable)
 	FPXRSceneCaptureDataUpdatedDelegate SceneCaptureDataUpdatedDelegate;
 
+	UPROPERTY(BlueprintAssignable)
+	FPXRLightEstimationDataUpdatedDelegate LightEstimationDataUpdatedDelegate;
+	
 	UPROPERTY(BlueprintAssignable)
 	FPXRAnchorServiceStateUpdatedDelegate SpatialAnchorServiceStateUpdatedDelegate;
 
@@ -45,6 +56,12 @@ public:
 	
 	UPROPERTY(BlueprintAssignable)
 	FPXRSceneCaptureServiceStateUpdatedDelegate SceneCaptureServiceStateUpdatedDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FPXRPlaneScanningStateUpdatedDelegate PlaneScanningStateUpdatedDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FPXRLightEstimationServiceStateUpdatedDelegate LightEstimationServiceStateUpdatedDelegate;
 
 	UPROPERTY(BlueprintAssignable)
 	FPXRVSTDisplayChangedDelegate VSTDisplayChangedDelegate;
@@ -91,7 +108,7 @@ public:
 	/// </ul>
 	/// </returns>
 	UFUNCTION(BlueprintPure, Category = "PICO|MR")
-	static bool GetAnchorEntityUuidByComponentPICO(UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult);
+	static bool GetAnchorEntityUuidByComponentPICO(const UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult);
 	/// <summary>
 	/// Gets the information about the Bounding Box 2D for a SceneCapture.
 	/// Before calling this method, you need to load SceneCaptures and get the SceneInfos first. The result contains the UUIDs of SceneCaptures loaded.
@@ -284,6 +301,18 @@ public:
 	static bool CloseSpatialMeshScanningPICO(EResultPICO& OutResult);
 
 	/// <summary>
+	/// Closes Spatial Plane scanning.
+	/// </summary>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
+	static bool CloseSpatialPlaneScanningPICO(EResultPICO& OutResult);
+	
+	/// <summary>
 	/// Closes Spatial Anchor service.
 	/// </summary>
 	/// <returns>Bool:
@@ -308,6 +337,17 @@ public:
 	static bool CloseSceneCaptureServicePICO(EResultPICO& OutResult);
 
 	/// <summary>
+	/// Closes Spatial Light Estimation service.
+	/// </summary>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
+	static bool CloseLightEstimationServicePICO(EResultPICO& OutResult);
+	/// <summary>
 	///  Creates Scene Bounding Polygon.
 	/// </summary>
 	/// <param name="BoundActor">Specifies the actor bound by polygon.</param>
@@ -325,6 +365,25 @@ public:
 	/// </returns>
 	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
 	static bool CreateSceneBoundingPolygonPICO(AActor* BoundActor,bool bNeverCreateCollision,bool bFlipPolygon,bool UseWireframe,const FTransform& Transform,const TArray<FVector>& Vertices,UMaterialInterface* DefaultMeshMaterial);
+
+	/// <summary>
+	///  Creates Scene Bounding Polygon.
+	/// </summary>
+	/// <param name="BoundActor">Specifies the actor bound by polygon.</param>
+	/// <param name="bNeverCreateCollision">True if never create collision, false otherwise.</param>
+	/// <param name="bFlipPolygon"> True if you want to flip polygon, false otherwise. It is recommend to be ture in Floor type, otherwise the orientation is down, which may affect rendering and collision.</param>	
+	/// <param name="UVAdjustment"> Used to adjust the scaling/rotation/offset of the UVs.</param>
+	/// <param name="Transform">The transform of polygon.</param>
+	/// <param name="Vertices">The set of vertices.</param>
+	/// <param name="DefaultMeshMaterial"> Default mesh material.</param>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
+	static bool CreateSceneBoundingPolygonWithUVAdjustment(AActor* BoundActor,bool bNeverCreateCollision,bool bFlipPolygon,const FUVAdjustmentPICO& UVAdjustment,const FTransform& Transform,const TArray<FVector>& Vertices,UMaterialInterface* DefaultMeshMaterial,bool bUseOfflineData=false);
 
 	/// <summary>
 	/// Changes Spatial Mesh's Lod Setting.
@@ -379,6 +438,28 @@ public:
     /// </returns>	
 	UFUNCTION(BlueprintPure, Category = "PICO|MR")
 	static EMRStatePICO GetSceneCaptureServiceStatePICO();
+
+	/// <summary>
+	/// Get Spatial Plane Scanning state.
+	/// </summary>
+	/// <returns>State of Spatial Plane Scanning:
+	///	- Initialized: After checking the Spatial Plane feature in ProjectSettings, the initialization will be completed during the app startup process.
+	///	- Running: This state is set after the Spatial Plane Scanning has been successfully started.
+	///	- Stopped: This state is set after the Spatial Plane Scanning has been successfully shut down.
+	/// </returns>	
+	UFUNCTION(BlueprintPure, Category = "PICO|MR")
+	static EMRStatePICO GetSpatialPlaneScanningStatePICO();
+
+	/// <summary>
+	/// Get Light Estimation service state.
+	/// </summary>
+	/// <returns>State of Light Estimation service:
+	///	- Initialized: After checking the Light Estimation feature in ProjectSettings, the initialization will be completed during the app startup process.
+	///	- Running: This state is set after the Light Estimation service has been successfully started.
+	///	- Stopped: This state is set after the Light Estimation service has been successfully shut down.
+	/// </returns>	
+	UFUNCTION(BlueprintPure, Category = "PICO|MR")
+	static EMRStatePICO GetLightEstimationServiceStatePICO();
 
 	/// <summary>
 	/// Reset Spatial Mesh Infos State.

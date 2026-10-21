@@ -3,7 +3,6 @@
 #include "PICO_BodyTracking.h"
 #include "PICO_MovementModule.h"
 #include "OpenXRCore.h"
-#include "PICOOpenXRRuntimeSettings.h"
 #include "IOpenXRHMDModule.h"
 
 #if PLATFORM_ANDROID
@@ -18,34 +17,14 @@ FBodyTrackingPICO::FBodyTrackingPICO()
 	Accelerations.SetNum(XR_BODY_JOINT_COUNT_BD);
 }
 
-void FBodyTrackingPICO::Register()
+void FBodyTrackingPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	RegisterOpenXRExtensionModularFeature();
+	OutExtensions.Add(XR_BD_BODY_TRACKING_EXTENSION_NAME);
 }
 
-void FBodyTrackingPICO::Unregister()
+void FBodyTrackingPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	UnregisterOpenXRExtensionModularFeature();
-}
-
-bool FBodyTrackingPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
-{
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableBodyTracking"))
-	{
-		OutExtensions.Add("XR_BD_body_tracking");
-		return true;
-	}
-	return false;
-}
-
-bool FBodyTrackingPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
-{
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableBodyTracking"))
-	{
-		OutExtensions.Add("XR_PICO_body_tracking2");
-		return true;
-	}
-	return false;
+	OutExtensions.Add(XR_PICO_BODY_TRACKING2_EXTENSION_NAME);
 }
 
 const void* FBodyTrackingPICO::OnGetSystem(XrInstance InInstance, const void* InNext)
@@ -75,6 +54,8 @@ void FBodyTrackingPICO::PostGetSystem(XrInstance InInstance, XrSystemId InSystem
 void FBodyTrackingPICO::PostCreateSession(XrSession InSession)
 {
 	Session = InSession;
+	PredictedTime = 0;
+	BaseSpace = XR_NULL_HANDLE;
 }
 
 void FBodyTrackingPICO::UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace)
@@ -85,7 +66,7 @@ void FBodyTrackingPICO::UpdateDeviceLocations(XrSession InSession, XrTime Displa
 
 bool FBodyTrackingPICO::TryGetBodyState(FBodyStatePICO& outBodyState, float WorldToMeters, bool QueryAcc, bool QueryVel, bool QueryPostureFlag)
 {
-	if (bBodyTrackerIsRunning)
+	if (bBodyTrackerIsRunning && xrLocateBodyJointsBD != nullptr && BodyTracker != XR_NULL_HANDLE && BaseSpace != XR_NULL_HANDLE)
 	{
 		XrBodyJointsLocateInfoBD GetInfo = { (XrStructureType)XR_TYPE_BODY_JOINTS_LOCATE_INFO_BD };
 		GetInfo.baseSpace = BaseSpace;
@@ -186,7 +167,7 @@ bool FBodyTrackingPICO::IsBodyTrackingSupported()
 
 bool FBodyTrackingPICO::StartBodyTracking(EBodyTrackingModePICO Mode)
 {
-	if (bCurrentDeviceSupportBodyTracking && Session != XR_NULL_HANDLE && BodyTracker == XR_NULL_HANDLE)
+	if (bCurrentDeviceSupportBodyTracking && Session != XR_NULL_HANDLE && BodyTracker == XR_NULL_HANDLE && xrCreateBodyTrackerBD != nullptr)
 	{
 		XrBodyTrackerCreateInfoBD CreateInfo = { (XrStructureType)XR_TYPE_BODY_TRACKER_CREATE_INFO_BD };
 		CreateInfo.jointSet = (XrBodyJointSetBD)Mode;
@@ -205,12 +186,17 @@ bool FBodyTrackingPICO::StopBodyTracking()
 {
 	if (BodyTracker != XR_NULL_HANDLE)
 	{
+		if (xrDestroyBodyTrackerBD == nullptr)
+		{
+			return false;
+		}
+
 		UE_LOG(PICOOpenXRMovement, Log, TEXT("Destroyed BodyTracker."));
-		bBodyTrackerIsRunning = false;
 		XrResult Result = xrDestroyBodyTrackerBD(BodyTracker);
 		if (XR_SUCCEEDED(Result))
 		{
 			BodyTracker = XR_NULL_HANDLE;
+			bBodyTrackerIsRunning = false;
 			return true;
 		}
 		return false;
@@ -235,7 +221,7 @@ bool FBodyTrackingPICO::GetBodyTrackingState(EBodyTrackingStatusPICO& Status, EB
 {
 	if (Session != XR_NULL_HANDLE && bSupportBodyTracking2)
 	{
-		XrBodyTrackingStatePICO StatusCode;
+		XrBodyTrackingStatePICO StatusCode = { (XrStructureType)XR_TYPE_BODY_TRACKING_STATE_PICO };
 		XrResult Result = xrGetBodyTrackingStatePICO(Session, &StatusCode);
 		if (XR_SUCCEEDED(Result))
 		{

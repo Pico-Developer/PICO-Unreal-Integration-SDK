@@ -6,14 +6,27 @@ public class PICOOpenXREditor : ModuleRules
 {
     public PICOOpenXREditor(ReadOnlyTargetRules Target) : base(Target)
     {
-        PrivateDependencyModuleNames.AddRange(
+        PublicDependencyModuleNames.AddRange(
             new string[] {
                 "Core",
-                "CoreUObject",
+                "CoreUObject"
+            }
+        );
+
+        PrivateDependencyModuleNames.AddRange(
+            new string[] {
                 "EditorFramework",
                 "UnrealEd",
                 "PICOOpenXRRuntimeSettings",
-                "OpenXRHMD"
+                "OpenXRHMD",
+                "PICOOpenXRInput",
+                "Json",
+                "SlateCore",
+                "Slate",
+                "Engine",
+                "RenderCore",
+                "Blutility",
+                "UMG",
             }
         );
     }

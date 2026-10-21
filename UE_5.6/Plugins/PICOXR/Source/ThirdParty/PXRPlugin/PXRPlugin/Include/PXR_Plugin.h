@@ -261,7 +261,13 @@ PVRP_EXPORT int Pxr_PersistSpatialAnchorComplete(uint64_t provider, uint64_t fut
 PVRP_EXPORT int Pxr_UnpersistSpatialAnchorAsync(uint64_t provider,PxrSpatialAnchorUnpersistInfo *info,uint64_t *future);
 PVRP_EXPORT int Pxr_UnpersistSpatialAnchorComplete(uint64_t provider,uint64_t future, PxrSpatialAnchorUnpersistCompletion *completion);
 
-
+/*
+ * mr sdk 3.0 light estimation
+*/
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTextureResolutions(uint32_t resolutionCapacityInput, uint32_t* resolutionCountOutput, PxrEnvironmentTextureResolution* resolutions);
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTexturePixelFormats(uint32_t pixelFormatCapacityInput, uint32_t* pixelFormatCountOutput, PxrEnvironmentTexturePixelFormat* pixelFormats);
+PVRP_EXPORT int Pxr_EnumerateEnvironmentTextureTransferTypes(uint32_t transferTypeCapacityInput, uint32_t* transferTypeCountOutput, PxrEnvironmentTextureTransferType* transferTypes);
+PVRP_EXPORT int Pxr_ReleaseEnvironmentTextureImage(PxrLightEstimationInfoBaseHeader* texture);
 /**
  *  mr sdk 3.0 scene capture
  */

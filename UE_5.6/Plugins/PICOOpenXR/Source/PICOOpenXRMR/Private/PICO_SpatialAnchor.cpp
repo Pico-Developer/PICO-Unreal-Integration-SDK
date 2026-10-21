@@ -1,6 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_SpatialAnchor.h"
+#include "PICO_MRModule.h"
 
 #include "IOpenXRHMDModule.h"
 #include "OpenXRCore.h"
@@ -12,29 +15,27 @@ FSpatialAnchorExtensionPICO::FSpatialAnchorExtensionPICO()
 {
 }
 
-bool FSpatialAnchorExtensionPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+FSpatialAnchorExtensionPICO* FSpatialAnchorExtensionPICO::GetInstance()
 {
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableAnchor"))
-	{
-		OutExtensions.Add(XR_PICO_SPATIAL_ANCHOR_EXTENSION_NAME);
-		if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableCloudAnchor"))
-		{
-			OutExtensions.Add(XR_PICO_SPATIAL_ANCHOR_SHARING_EXTENSION_NAME);
-		}
-		return true;
-	}
-	
-	return false;
+	return &FPICOOpenXRMRModule::Get().GetMRModuleExtension().GetSpatialAnchorPICO();
+}
+
+void FSpatialAnchorExtensionPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
+{
+	OutExtensions.Add(XR_PICO_SPATIAL_ANCHOR_EXTENSION_NAME);
+}
+
+void FSpatialAnchorExtensionPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+{
+	OutExtensions.Add(XR_PICO_SPATIAL_ANCHOR_SHARING_EXTENSION_NAME);
 }
 
 void FSpatialAnchorExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId InSystem)
 {
-	FMixedRealityPICO::PostGetSystem(InInstance, InSystem);
-
 	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
 	{
 		bSupportsSpatialAnchorEXT = IOpenXRHMDModule::Get().IsExtensionEnabled(XR_PICO_SPATIAL_ANCHOR_EXTENSION_NAME);
-		UE_LOG(LogMRPICO,Log, TEXT("bSupportsSpatialAnchorEXT:%d"), bSupportsSpatialAnchorEXT)
+		UE_LOG(LogMRPICO,Verbose, TEXT("bSupportsSpatialAnchorEXT:%d"), bSupportsSpatialAnchorEXT)
 
 		if (bSupportsSpatialAnchorEXT)
 		{
@@ -42,7 +43,7 @@ void FSpatialAnchorExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemI
 			XrSystemProperties SPSpatialAnchor{ XR_TYPE_SYSTEM_PROPERTIES,&SpatialAnchorPropertiesPICO };
 			XR_ENSURE(xrGetSystemProperties(InInstance, InSystem, &SPSpatialAnchor));
 			bSupportsSpatialAnchor = SpatialAnchorPropertiesPICO.supportsSpatialAnchor == XR_TRUE;
-			UE_LOG(LogHMD,Log, TEXT("bSupportsSpatialAnchor:%d"), bSupportsSpatialAnchor)
+			UE_LOG(LogHMD,Verbose, TEXT("bSupportsSpatialAnchor:%d"), bSupportsSpatialAnchor)
 
 			XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrCreateSpatialAnchorAsyncPICO", (PFN_xrVoidFunction*)&xrCreateSpatialAnchorAsyncPICO));
 			XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrCreateSpatialAnchorCompletePICO", (PFN_xrVoidFunction*)&xrCreateSpatialAnchorCompletePICO));
@@ -54,7 +55,7 @@ void FSpatialAnchorExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemI
 
 
 		bSupportsSpatialAnchorSharingEXT = IOpenXRHMDModule::Get().IsExtensionEnabled(XR_PICO_SPATIAL_ANCHOR_SHARING_EXTENSION_NAME);
-		UE_LOG(LogMRPICO,Log, TEXT("bSupportsSpatialAnchorSharingEXT:%d"), bSupportsSpatialAnchorSharingEXT)
+		UE_LOG(LogMRPICO,Verbose, TEXT("bSupportsSpatialAnchorSharingEXT:%d"), bSupportsSpatialAnchorSharingEXT)
 
 		if (bSupportsSpatialAnchorSharingEXT)
 		{
@@ -98,6 +99,12 @@ bool FSpatialAnchorExtensionPICO::CreateSpatialAnchorAsync(const FPICOPollFuture
 	bool bResult=false;
 	if(bSupportsSpatialAnchor)
 	{
+		if (!HasValidTrackingContext() || xrCreateSpatialAnchorAsyncPICO == nullptr)
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		XrFutureEXT xrFutureEXT;
 		XrSpatialAnchorCreateInfoPICO cSpatialAnchorCreateInfoBD = {};
 		cSpatialAnchorCreateInfoBD.type = XR_TYPE_SPATIAL_ANCHOR_CREATE_INFO_PICO;
@@ -236,7 +243,7 @@ bool FSpatialAnchorExtensionPICO::DownloadSharedSpatialAnchorsAsync(const FAncho
 			for (auto Uuid : LoadInfo.UUIDFilter)
 			{
 				XrSharedSpatialAnchorDownloadInfoPICO cSenseDataQueryInfoBD = {};
-				cSenseDataQueryInfoBD.type = XR_TYPE_SPATIAL_ANCHOR_DOWNLOAD_INFO_PICO;
+				cSenseDataQueryInfoBD.type = XR_TYPE_SHARED_SPATIAL_ANCHOR_DOWNLOAD_INFO_PICO;
 
 				UE_LOG(LogMRPICO, Log,TEXT("SpatialAnchorShareInfo.uuid:%s"), *Uuid.ToString());
 				FMemory::Memcpy(cSenseDataQueryInfoBD.uuid.data, Uuid.UUIDArray);
@@ -340,7 +347,7 @@ bool FSpatialAnchorExtensionPICO::DownloadSharedSpatialAnchorsComplete(const XrF
 	if(bSupportsSpatialAnchorSharing)
 	{
 		XrSharedSpatialAnchorDownloadCompletionPICO SharedSpatialAnchorDownloadCompletion = {};
-		SharedSpatialAnchorDownloadCompletion.type = XR_TYPE_SPATIAL_ANCHOR_DOWNLOAD_COMPLETION_PICO;
+		SharedSpatialAnchorDownloadCompletion.type = XR_TYPE_SHARED_SPATIAL_ANCHOR_DOWNLOAD_COMPLETION_PICO;
 		XrResult xrResult = xrDownloadSharedSpatialAnchorCompletePICO(ProviderHandle,FutureHandle, &SharedSpatialAnchorDownloadCompletion);
 		UE_LOG(LogMRPICO, Log,TEXT("DownloadSharedSpatialAnchorsComplete:%d"), SharedSpatialAnchorDownloadCompletion.futureResult);
 		completion.FutureResult = FSpatialSensingExtensionPICO::CastToPICOResult(SharedSpatialAnchorDownloadCompletion.futureResult);
@@ -460,6 +467,12 @@ bool FSpatialAnchorExtensionPICO::CreateProvider(const FSenseDataProviderCreateI
 	bool bResult=false;
 	if(bSupportsSpatialAnchor)
 	{
+		if (Session == XR_NULL_HANDLE)
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		Type = EProviderTypePICO::Pico_Provider_Anchor;
 		if (IsHandleValid())
 		{
@@ -509,7 +522,7 @@ bool FSpatialAnchorExtensionPICO::IsAnchorValid(AActor* BoundActor)
 	return true;
 }
 
-bool FSpatialAnchorExtensionPICO::IsAnchorValid(UAnchorComponentPICO* AnchorComponent)
+bool FSpatialAnchorExtensionPICO::IsAnchorValid(const UAnchorComponentPICO* AnchorComponent)
 {
 	if (!IsValid(AnchorComponent) || !AnchorComponent->IsAnchorValid())
 	{
@@ -530,21 +543,20 @@ UAnchorComponentPICO* FSpatialAnchorExtensionPICO::GetAnchorComponent(AActor* Bo
 	return AnchorComponent;
 }
 
-bool FSpatialAnchorExtensionPICO::GetAnchorEntityUUID(UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult)
+bool FSpatialAnchorExtensionPICO::GetAnchorEntityUUID(const UAnchorComponentPICO* AnchorComponent, FSpatialUUIDPICO& OutAnchorUUID,EResultPICO& OutResult)
 {
 	bool bResult=false;
+	if (!IsAnchorValid(AnchorComponent))
+	{
+		return bResult;
+	}
+	
 	if(bSupportsSpatialAnchor)
 	{
 		FSpatialHandlePICO AnchorHandle = AnchorComponent->GetAnchorHandle();
 		XrUuidEXT PxrAnchorUUID;
 		XrAnchorPICO anchor = reinterpret_cast<XrAnchorPICO>(AnchorHandle.GetValue());
 		XrResult xrResult = FSpatialSensingExtensionPICO::GetInstance()->xrGetAnchorUuidPICO(anchor, &PxrAnchorUUID);
-
-		if (xrResult==XR_ERROR_HANDLE_INVALID)
-		{
-			AnchorComponent->ResetAnchorHandle();
-		}
-		
 		bResult = XR_SUCCEEDED(xrResult);
 		OutAnchorUUID = PxrAnchorUUID.data;
 		OutResult=FSpatialSensingExtensionPICO::CastToPICOResult(xrResult);
@@ -558,8 +570,9 @@ bool FSpatialAnchorExtensionPICO::GetAnchorPose(UAnchorComponentPICO* AnchorComp
 	bool bResult=false;
 	if(bSupportsSpatialAnchor)
 	{
-		if (!IsAnchorValid(AnchorComponent))
+		if (!HasValidTrackingContext() || !IsAnchorValid(AnchorComponent))
 		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
 			return false;
 		}
 

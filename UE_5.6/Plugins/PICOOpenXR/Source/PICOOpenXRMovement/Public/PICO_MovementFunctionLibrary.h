@@ -9,9 +9,6 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(PICOOpenXRMovement, Log, All);
 
-#define XR_FACE_EXPRESSION_COUNT_BD 0
-#define XR_LIP_EXPRESSION_COUNT_BD 0
-
 UENUM(BlueprintType)
 enum class EBodyJointPICO : uint8
 {
@@ -89,7 +86,8 @@ struct FBodyTrackingBoneLengthPICO
 		, UpperArmLen(0.0f)
 		, LowerArmLen(0.0f)
 		, HandLen(0.0f)
-	{}
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -110,7 +108,12 @@ struct FBodyJointDataPICO
 	FVector Position;
 
 	FBodyJointDataPICO()
-	{}
+		: Joint(EBodyJointPICO::Pelvis)
+		, bIsValid(false)
+		, Orientation(FRotator::ZeroRotator)
+		, Position(FVector::ZeroVector)
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -125,7 +128,10 @@ struct FBodyJointPostureFlagPICO
 	bool bStatic;
 
 	FBodyJointPostureFlagPICO()
-	{}
+		: bStomp(false)
+		, bStatic(false)
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -146,7 +152,12 @@ struct FBodyJointVelocityPICO
 	FVector AngularVel;
 
 	FBodyJointVelocityPICO()
-	{}
+		: bIsLinearValid(false)
+		, LinearVel(FVector::ZeroVector)
+		, bIsAngularValid(false)
+		, AngularVel(FVector::ZeroVector)
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -167,7 +178,12 @@ struct FBodyJointAccelerationPICO
 	FVector AngularAcc;
 
 	FBodyJointAccelerationPICO()
-	{}
+		: bIsLinearValid(false)
+		, LinearAcc(FVector::ZeroVector)
+		, bIsAngularValid(false)
+		, AngularAcc(FVector::ZeroVector)
+	{
+	}
 };
 
 
@@ -192,7 +208,13 @@ struct FBodyStatePICO
 	TArray<FBodyJointAccelerationPICO> Accelerations;
 
 	FBodyStatePICO()
-	{}
+		: IsActive(false)
+		, BaseJointsData()
+		, PostureFlags()
+		, Velocities()
+		, Accelerations()
+	{
+	}
 };
 
 UENUM(BlueprintType)
@@ -234,6 +256,102 @@ enum class EFaceTrackingModePICO : uint8
 	OnlyAudioWithLipsync = 3,
 };
 
+UENUM(BlueprintType)
+enum class EFaceBlendShapePICO : uint8
+{
+	// Brow blend shapes (mapped from XrFaceExpressionBD, cleaned names)
+	BrowDropLeft = 0,
+	BrowDropRight = 1,
+	BrowInnerUp = 2,
+	BrowOuterUpLeft = 3,
+	BrowOuterUpRight = 4,
+
+	// Left eye blend shapes
+	EyeBlinkLeft = 5,
+	EyeLookDownLeft = 6,
+	EyeLookInLeft = 7,
+	EyeLookOutLeft = 8,
+	EyeLookUpLeft = 9,
+	EyeSquintLeft = 10,
+	EyeWideLeft = 11,
+
+	// Right eye blend shapes
+	EyeBlinkRight = 12,
+	EyeLookDownRight = 13,
+	EyeLookInRight = 14,
+	EyeLookOutRight = 15,
+	EyeLookUpRight = 16,
+	EyeSquintRight = 17,
+	EyeWideRight = 18,
+
+	// Nose blend shapes
+	NoseSneerLeft = 19,
+	NoseSneerRight = 20,
+
+	// Cheek blend shapes
+	CheekPuff = 21,
+	CheekSquintLeft = 22,
+	CheekSquintRight = 23,
+
+	// Mouth blend shapes
+	MouthClose = 24,
+	MouthFunnel = 25,
+	MouthPucker = 26,
+	MouthLeft = 27,
+	MouthRight = 28,
+	MouthSmileLeft = 29,
+	MouthSmileRight = 30,
+	MouthFrownLeft = 31,
+	MouthFrownRight = 32,
+	MouthDimpleLeft = 33,
+	MouthDimpleRight = 34,
+	MouthStretchLeft = 35,
+	MouthStretchRight = 36,
+	MouthRollLower = 37,
+	MouthRollUpper = 38,
+	MouthShrugLower = 39,
+	MouthShrugUpper = 40,
+	MouthPressLeft = 41,
+	MouthPressRight = 42,
+	MouthLowerDropLeft = 43,
+	MouthLowerDropRight = 44,
+	MouthUpperUpLeft = 45,
+	MouthUpperUpRight = 46,
+
+	// Jaw blend shapes
+	JawForward = 47,
+	JawLeft = 48,
+	JawRight = 49,
+	JawOpen = 50,
+
+	// Tongue
+	TongueOut = 51,
+
+	// LIPSYNC (mapped from XrLipExpressionBD, cleaned names)
+	PP = 52,
+	CH = 53,
+	Lo = 54,
+	O = 55,
+	I = 56,
+	Lu = 57,
+	RR = 58,
+	XX = 59,
+	Laa = 60,
+	Li = 61,
+	FF = 62,
+	U = 63,
+	TH = 64,
+	Lkk = 65,
+	SS = 66,
+	Le = 67,
+	DD = 68,
+	E = 69,
+	Lnn = 70,
+	Sil = 71,
+
+	COUNT = 72,
+};
+
 USTRUCT(BlueprintType)
 struct FFaceStatePICO
 {
@@ -270,23 +388,28 @@ struct FEyeDataPICO
 	GENERATED_BODY()
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
-	bool Valid;
-
-	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
 	float Openness;
 
 	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
-	float PupilDiameter;
+	bool bOpennessValid;
 
 	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
-	FVector2D MiddleCanthusUV;
+	bool bPoseValid;
+
+	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
+	FVector Location;
+
+	UPROPERTY(BlueprintReadOnly, Category = "PICO|EyeTracking")
+	FRotator Rotation;
 
 	FEyeDataPICO()
-		:Valid(false)
-		, Openness(0.0f)
-		, PupilDiameter(0)
-		, MiddleCanthusUV(FVector2D::ZeroVector)
-	{}
+		: Openness(0.0f)
+		, bOpennessValid(false)
+		, bPoseValid(false)
+		, Location(FVector::ZeroVector)
+		, Rotation(FRotator::ZeroRotator)
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -439,22 +562,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "PICO|ExpandDevice")
 	static bool GetExpandDeviceCustomDataPICO(TArray<FExpandDeviceDataPICO>& Datas);
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
-	static bool GetFaceTrackingSupportedPICO(bool& Supported, TArray<EFaceTrackingModePICO>& SupportedModes);
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	static bool GetFaceTrackingSupportedPICO(TArray<EFaceTrackingModePICO>& SupportedModes);
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
 	static bool StartFaceTrackingPICO(EFaceTrackingModePICO Mode);
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
 	static bool StopFaceTrackingPICO();
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
 	static bool SetFaceTrackingCurrentModePICO(EFaceTrackingModePICO Mode);
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
 	static bool GetFaceTrackingCurrentModePICO(EFaceTrackingModePICO& Mode);
 
-	//UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
+	UFUNCTION(BlueprintCallable, Category = "PICO|FaceTracking")
 	static bool GetFaceTrackingDataPICO(int64 DisplayTime, FFaceStatePICO& outState);
 
 	UFUNCTION(BlueprintPure, Category = "PICO|EyeTracking")
@@ -475,5 +598,5 @@ public:
 	* @return	true if the function call was successful, false otherwise
 	*/
 	UFUNCTION(BlueprintCallable, Category = "PICO|EyeTracking")
-	static bool GetEyeTrackingDataPICO(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData, float WorldToMeters = 100.0f);
+	static bool GetEyeTrackingDataPICO(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool& bDepthValid, float& DepthConfidence, float& Depth, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData);
 };

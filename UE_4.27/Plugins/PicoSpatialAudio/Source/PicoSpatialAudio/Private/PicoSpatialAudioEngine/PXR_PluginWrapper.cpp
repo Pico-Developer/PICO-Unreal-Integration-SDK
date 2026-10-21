@@ -1,4 +1,4 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+﻿// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
 // Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
 
@@ -118,7 +118,7 @@ static void* PASP_LoadEntryPoint(void* Handle, const char* EntryPointName)
 	
 	if (ptr == nullptr)
 	{
-		UE_LOG(LogPICOPluginWrapper_PASP, Error, TEXT("Unable to load entry point: %hs"), ANSI_TO_TCHAR(EntryPointName));
+		UE_LOG(LogPICOPluginWrapper_PASP, Error, TEXT("Unable to load entry point: %s"), ANSI_TO_TCHAR(EntryPointName));
 	}
 	return ptr;
 #elif PLATFORM_ANDROID

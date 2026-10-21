@@ -14,7 +14,7 @@ UPokeHoleComponentPICO::UPokeHoleComponentPICO(const FObjectInitializer& ObjectI
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaskedMaterialRef(TEXT("/Script/Engine.Material'/PICOOpenXR/PICOOpenXR/Materials/M_PokeHole.M_PokeHole'"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaskedMaterialRef(TEXT("/Script/Engine.Material'/PICOOpenXR/Materials/M_PokeHole.M_PokeHole'"));
 	OverrideMaterial = MaskedMaterialRef.Object;
 }
 

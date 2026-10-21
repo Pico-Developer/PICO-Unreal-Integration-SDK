@@ -363,6 +363,9 @@ typedef enum
     PXR_TYPE_SPATIAL_ENTITY_BOUNDING_BOX_3D_COMPONENT_INFO = 271,
     PXR_TYPE_SENSE_UNPERSIST_ANCHOR_BY_UUID_COMPLETION = 272,
     PXR_TYPE_EVENT_DATA_SPATIAL_MAP_MEM_LIMITED = 273,
+	PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_FILTER = 274,
+    PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_GET_INFO = 275,
+    PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_INFO = 276,
 
     /*
      * future ext
@@ -840,6 +843,7 @@ typedef enum PxrSpatialEntityComponentType{
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_TRIANGLE_MESH = 5,
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_AUTO_SCENE_CAPTURE_RESULT = 1000,
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_SEMI_AUTO_SCENE_CAPTURE_RESULT = 1001,
+	PXR_SPATIAL_ENTITY_COMPONENT_TYPE_PLANE_ORIENTATION = 1010027000,
 } PxrSpatialEntityComponentType;
 
 typedef enum PxrSemiAutoRoomCaptureCandidateType {
@@ -3111,6 +3115,23 @@ typedef struct PxrSpatialEntitySemanticFilter{
     PxrSemanticLabel*          semantics;
 } PxrSpatialEntitySemanticFilter;
 
+typedef enum PxrPlaneOrientation{
+    PXR_PLANE_ORIENTATION_HORIZONTAL_UPWARD = 0,
+    PXR_PLANE_ORIENTATION_HORIZONTAL_DOWNWARD= 1,
+    PXR_PLANE_ORIENTATION_VERTICAL = 2,
+    PXR_PLANE_ORIENTATION_ARBITRARY = 3,
+} PxrPlaneOrientation;
+
+typedef struct PxrSpatialEntityPlaneOrientationFilter{
+    PxrStructureType            type;//PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_FILTER
+    uint32_t                    orientationCount;
+    PxrPlaneOrientation*        orientations;
+} PxrSpatialEntityPlaneOrientationFilter;
+
+typedef struct PxrSpatialPlaneProviderCreateInfo{
+    PxrStructureType          type; //PXR_TYPE_PLANE_DETECTION_PROVIDER_CREATE_INFO
+} PxrSpatialPlaneProviderCreateInfo;
+
 typedef struct PxrSenseDataQueryFilterBaseHeader{
     PxrStructureType             type;
     uint8_t                      vary[128];
@@ -3309,6 +3330,18 @@ typedef struct PxrSpatialEntityTriangleMeshInfo{
     uint32_t              indexCountOutput;
     uint16_t*             indices;
 } PxrSpatialEntityTriangleMeshInfo;
+
+// Plane Orientation
+typedef struct PxrSpatialEntityPlaneOrientationGetInfo{
+    PxrStructureType                   type;
+    uint64_t                           entity;
+    PxrSpatialEntityComponentType    componentType;
+} PxrSpatialEntityPlaneOrientationGetInfo;
+
+typedef struct PxrSpatialEntityPlaneOrientationInfo{
+    PxrStructureType         type;
+    PxrPlaneOrientation      planeOrientation;
+} PxrSpatialEntityPlaneOrientationInfo;
 
 typedef struct PxrEventDataSenseDataProviderStateChanged{
     PxrStructureType              type;//PXR_TYPE_EVENT_DATA_SENSE_DATA_PROVIDER_STATE_CHANGED

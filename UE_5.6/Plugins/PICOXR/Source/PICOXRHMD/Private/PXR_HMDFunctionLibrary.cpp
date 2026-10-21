@@ -59,14 +59,6 @@ FVector UPICOXRHMDFunctionLibrary::PXR_GetCurrentPosition()
 	return FVector();
 }
 
-bool UPICOXRHMDFunctionLibrary::PXR_DoesSupportPositionalTracking()
-{
-#if PLATFORM_ANDROID
-	return GetPICOXRHMD()->DoesSupportPositionalTracking();
-#endif
-	return false;
-}
-
 FVector UPICOXRHMDFunctionLibrary::PXR_GetAngularVelocity()
 {
 #if PLATFORM_ANDROID

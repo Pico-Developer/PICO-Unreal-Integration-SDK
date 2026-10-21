@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -25,6 +25,14 @@ enum class EMRStatePICO:uint8
 	Running = 1,
 	Stopped = 2,
 };
+
+UENUM(BlueprintType)
+enum class EAnchorStatePICO : uint8
+{
+	Invalid  = 0,
+	Saved = 1,
+};
+
 
 UENUM(BlueprintType)
 enum class EVSTDisplayStatusPICO:uint8
@@ -380,8 +388,15 @@ enum class ESemanticLabelPICO:uint8
 	Curtain = 13,
 	Cabinet = 14,
 	Bed =15,
+	Plant =16,
 	Screen =17,
 	VirtualWall = 18,
+	Refrigerator = 19,
+	Washing_Machine = 20,
+	Air_Conditioner = 21,
+	Lamp = 22,
+	Wall_Art = 23,
+	Stairway =24,
 	Count UMETA(Hidden)
 };
 
@@ -400,7 +415,171 @@ ENUM_RANGE_BY_VALUES(ESemanticLabelPICO,
 	ESemanticLabelPICO::Curtain,
 	ESemanticLabelPICO::Cabinet,
 	ESemanticLabelPICO::Bed,
-	ESemanticLabelPICO::Screen);
+	ESemanticLabelPICO::Plant,
+	ESemanticLabelPICO::Screen,
+	ESemanticLabelPICO::VirtualWall,
+	ESemanticLabelPICO::Refrigerator,
+	ESemanticLabelPICO::Washing_Machine,
+	ESemanticLabelPICO::Air_Conditioner,
+	ESemanticLabelPICO::Lamp,
+	ESemanticLabelPICO::Wall_Art,
+	ESemanticLabelPICO::Stairway);
+
+UENUM(BlueprintType)
+enum class EPlaneOrientationPICO:uint8
+{
+	HorizontalUpward = 0  UMETA(DisplayName="HorizontalUpward"), 
+	HorizontalDownward = 1 UMETA(DisplayName="HorizontalDownward"), 
+	Vertical = 2 UMETA(DisplayName="Vertical"), 
+	Arbitrary = 3 UMETA(DisplayName="Arbitrary"), 
+	Count UMETA(Hidden)
+};
+
+UENUM(BlueprintType)
+enum class ESceneCaptureScalingModePICO: uint8
+{
+	// Use Default Scale of Actor.
+	NoScaling,
+	// Stretch each axis by the SceneInfo.
+	Stretch,
+};
+
+USTRUCT(BlueprintType)
+struct PICOOPENXRMR_API FSceneCaptureGeneratorActorPICO
+{
+	GENERATED_BODY()
+
+	/**
+	 * The class of actor to spawn.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TSubclassOf<AActor> Actor;
+	
+	/**
+	 * Set what scaling mode to apply to the actor.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	ESceneCaptureScalingModePICO ScalingMode = ESceneCaptureScalingModePICO::Stretch;
+};
+
+
+USTRUCT(BlueprintType)
+struct FUVAdjustmentPICO
+{
+	GENERATED_BODY()
+
+	/** Offset applied to the UV texture coordinates.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector2D Offset = FVector2D::ZeroVector;
+
+	/** Scale applied to the UV texture coordinates.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector2D Scale = FVector2D::UnitVector;
+	
+	/** Angle of rotation in degrees.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	float Rotation;
+
+	FUVAdjustmentPICO()
+	{
+		Offset = FVector2D::ZeroVector;
+		Scale = FVector2D::UnitVector;
+		Rotation = 0.0f;
+	}
+
+};
+
+USTRUCT(BlueprintType)
+struct FMRBox2DInfoPICO_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector2D Offset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector2D Extent;
+
+	FMRBox2DInfoPICO_Offline()
+	{
+		Offset = FVector2D::ZeroVector;
+		Extent = FVector2D::ZeroVector;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FMRBox3DInfoPICO_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector Offset;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector Extent;
+
+	FMRBox3DInfoPICO_Offline()
+	{
+		Offset = FVector::ZeroVector;
+		Extent = FVector::ZeroVector;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FMRPolygonVerticesPICO_Offline
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<FVector2D> PolygonVertices;
+};
+
+USTRUCT(BlueprintType)
+struct FMRSceneInfoPICO_Offline
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FString Guid;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FVector Position;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FQuat Rotation;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	ESemanticLabelPICO SemanticLabel;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FMRBox3DInfoPICO_Offline Box3DInfo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FMRBox2DInfoPICO_Offline Box2DInfo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<FVector2D> PolygonVertices;
+
+	FMRSceneInfoPICO_Offline()
+	{
+		Guid = FString();
+		Position = FVector::ZeroVector;
+		Rotation = FQuat::Identity;
+		SemanticLabel = ESemanticLabelPICO::Unknown;
+		Box3DInfo = FMRBox3DInfoPICO_Offline();
+		Box2DInfo = FMRBox2DInfoPICO_Offline();
+		PolygonVertices.Empty();
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FMRSceneInfosPICO_Offline
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<FMRSceneInfoPICO_Offline> OutSceneInfos;
+};
 
 
 USTRUCT(BlueprintType)
@@ -459,6 +638,13 @@ struct PICOOPENXRMR_API FAnchorLoadResultPICO
 
 	UPROPERTY(BlueprintReadWrite, Category = "PICO|MR")
 	EPersistLocationPICO PersistLocation;
+
+	FAnchorLoadResultPICO()
+		: AnchorUUID()
+		, AnchorHandle()
+		, PersistLocation(EPersistLocationPICO::PersistLocation_Local)
+	{
+	}
 };
 
 UENUM(BlueprintType, meta = (Categories = "PICO|MR"))
@@ -475,6 +661,8 @@ enum class EProviderTypePICO:uint8
 	Pico_Provider_Anchor = 1,
 	Pico_Provider_Mesh = 2,
 	Pico_Provider_Scene_Capture = 3,
+	Pico_Provider_Plane = 4,
+	Pico_Provider_Light_Estimate = 5,
 	Pico_Provider_Max
 };
 
@@ -596,6 +784,14 @@ struct FSenseDataProviderCreateInfoAnchorPICO : FSenseDataProviderCreateInfoBase
 	}
 };
 
+struct FSenseDataProviderCreateInfoPlanePICO : FSenseDataProviderCreateInfoBasePICO
+{
+	FSenseDataProviderCreateInfoPlanePICO()
+	{
+		Type = EProviderTypePICO::Pico_Provider_Plane;
+	}
+};
+
 struct FSenseDataProviderCreateInfoMeshPICO : FSenseDataProviderCreateInfoBasePICO
 {
 	ESpatialMeshLodPICO Lod;
@@ -615,8 +811,8 @@ struct FSenseDataProviderCreateInfoSceneCapturePICO : FSenseDataProviderCreateIn
 	}
 };
 
-UENUM(BlueprintType)
-enum class ESpatialEntityComponentTypePICO:uint8
+UENUM(NotBlueprintType)
+enum class ESpatialEntityComponentTypePICO:uint32
 {
 	Location = 0,
 	Semantic = 1,
@@ -624,6 +820,18 @@ enum class ESpatialEntityComponentTypePICO:uint8
 	Polygon = 3,
 	Boundary_3D = 4,
 	Triangle_Mesh = 5,
+	LightEstimation=1010028000,
+};
+
+struct FSenseDataProviderCreateInfoLightEstimationPICO : FSenseDataProviderCreateInfoBasePICO
+{
+	ESpatialLightEstimationResolutionPICO Resolution;
+
+	FSenseDataProviderCreateInfoLightEstimationPICO()
+	{
+		Type = EProviderTypePICO::Pico_Provider_Light_Estimate;
+		Resolution=ESpatialLightEstimationResolutionPICO::TextureResolution_128x128;
+	}
 };
 
 UENUM(BlueprintType)
@@ -717,10 +925,10 @@ struct FBoundingBox2DPICO
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
 	FExtent2DfPICO Extent;
 
-	FBoundingBox2DPICO()
+    FBoundingBox2DPICO()
+        : Center(FVector::ZeroVector)
+        , Extent()
 	{
-		Center = FVector();
-		Extent = FExtent2DfPICO();
 	}
 };
 
@@ -768,6 +976,56 @@ struct FSpatialMeshInfoPICO
 	}
 };
 
+USTRUCT(BlueprintType)
+struct FSpatialPlaneInfoPICO
+{
+	GENERATED_BODY()
+
+	/** The UUID of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FSpatialUUIDPICO UUID;
+
+	/** The State of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	ESpatialMeshStatePICO State;
+
+	/** The State of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	EPlaneOrientationPICO PlaneOrientation;
+
+	/** The Transform of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FTransform PlanePose;
+
+	/** The BoundingBox of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	FBoundingBox2DPICO BoundingBox;
+
+	/** The Vertices Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<FVector> Vertices;
+
+	/** The Indices Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	TArray<int32> Indices;
+	
+	/** The Semantics Array of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	ESemanticLabelPICO Semantic;
+
+	/** The Update Time of the Plane */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
+	int64 UpdateTime;
+
+	FSpatialPlaneInfoPICO()
+	{
+		PlaneOrientation = EPlaneOrientationPICO::HorizontalUpward;
+		State = ESpatialMeshStatePICO::Stable;
+		Semantic = ESemanticLabelPICO::Unknown;
+		UpdateTime = 0;
+	}
+};
+
 
 USTRUCT(BlueprintType)
 struct FMRSceneInfoPICO
@@ -789,5 +1047,12 @@ struct FMRSceneInfoPICO
 	/** The SceneType of the Scene */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PICO|MR")
 	ESceneTypePICO SceneType;
-	
+
+	FMRSceneInfoPICO()
+		: UUID()
+		, ScenePose(FTransform::Identity)
+		, Semantic(ESemanticLabelPICO::Unknown)
+		, SceneType(ESceneTypePICO::BoundingBox2D)
+	{
+	}
 };

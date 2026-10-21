@@ -38,11 +38,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXREventDataMotionTrackingModeChang
 //MR
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRAnchorDataUpdatedDelegate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRMeshDataUpdatedDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRPlaneDataUpdatedDelegate);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPXRSceneCaptureDataUpdatedDelegate);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRAnchorServiceStateUpdatedDelegate,EPICOMRState,State);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRMeshScanningStateUpdatedDelegate,EPICOMRState,State);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRSceneCaptureServiceStateUpdatedDelegate,EPICOMRState,State);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRPlaneScanningStateUpdatedDelegate,EPICOMRState,State);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPXRVSTDisplayChangedDelegate,EPICOVSTDisplayStatus,Status);
 
 UCLASS()
@@ -185,6 +188,11 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FPXRMeshDataUpdatedDelegate MeshDataUpdatedDelegate;
 
+	/// <summary>Gets the update of Plane data.
+	/// </summary>	
+	UPROPERTY(BlueprintAssignable)
+	FPXRPlaneDataUpdatedDelegate PlaneDataUpdatedDelegate;
+
 	/// <summary>Gets the update of Scene Capture data.
 	/// </summary>	
 	UPROPERTY(BlueprintAssignable)
@@ -220,6 +228,15 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FPXRSceneCaptureServiceStateUpdatedDelegate SceneCaptureServiceStateUpdatedDelegate;
 
+	/// <summary>Gets the updated state of Plane Scanning.
+	/// </summary>
+	/// <returns>State of Plane Scanning:
+	///	- Initialized: After checking the Plane Scanning feature in ProjectSettings, the initialization will be completed during the app startup process.
+	///	- Running: This state is set after the Plane Scanning has been successfully started.
+	///	- Stopped: This state is set after the Plane Scanning has been successfully shut down.
+	/// </returns>			
+	UPROPERTY(BlueprintAssignable)
+	FPXRPlaneScanningStateUpdatedDelegate PlaneScanningStateUpdatedDelegate;
 	/// <summary>Gets the change of VST display.
 	/// </summary>	
 	/// <returns> The change of VST state:

@@ -97,9 +97,9 @@ bool UMovementFunctionLibraryPICO::GetExpandDeviceCustomDataPICO(TArray<FExpandD
 	return FPICOOpenXRMovementModule::Get().GetFExpandDevicePICOExtension().GetExpandDeviceCustomData(Datas);
 }
 
-bool UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(bool& Supported, TArray<EFaceTrackingModePICO>& SupportedModes)
+bool UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(TArray<EFaceTrackingModePICO>& SupportedModes)
 {
-	return FPICOOpenXRMovementModule::Get().GetFaceTrackingPICOExtension().GetFaceTrackingSupported(Supported, SupportedModes);
+	return FPICOOpenXRMovementModule::Get().GetFaceTrackingPICOExtension().GetFaceTrackingSupported(SupportedModes);
 }
 
 bool UMovementFunctionLibraryPICO::StartFaceTrackingPICO(EFaceTrackingModePICO Mode)
@@ -147,9 +147,9 @@ bool UMovementFunctionLibraryPICO::StopEyeTrackingPICO()
 	return FPICOOpenXRMovementModule::Get().GetEyeTrackingPICOExtension().StopEyeTracking();
 }
 
-bool UMovementFunctionLibraryPICO::GetEyeTrackingDataPICO(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData, float WorldToMeters)
+bool UMovementFunctionLibraryPICO::GetEyeTrackingDataPICO(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool& bDepthValid, float& DepthConfidence, float& Depth, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData)
 {
-	return FPICOOpenXRMovementModule::Get().GetEyeTrackingPICOExtension().GetEyeTrackingData(LeftEye, RightEye, QueryGazeData, OutGazeData, WorldToMeters);
+	return FPICOOpenXRMovementModule::Get().GetEyeTrackingPICOExtension().GetEyeTrackingData(LeftEye, RightEye, bDepthValid, DepthConfidence, Depth, QueryGazeData, OutGazeData);
 }
 
 

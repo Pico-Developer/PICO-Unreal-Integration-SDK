@@ -292,7 +292,11 @@ bool InitializePICOPluginWrapper(PICOPluginWrapper* wrapper)
 		PICO_BIND_ENTRY_POINT(PersistSpatialAnchorComplete),
 		PICO_BIND_ENTRY_POINT(UnpersistSpatialAnchorAsync),
 		PICO_BIND_ENTRY_POINT(UnpersistSpatialAnchorComplete),
-	
+		/*
+		* mr sdk 3.0 light estimation
+		*/
+		PICO_BIND_ENTRY_POINT(ReleaseEnvironmentTextureImage),
+
 		/**
 		*  mr sdk 3.0 scene capture
 		*/
@@ -306,6 +310,19 @@ bool InitializePICOPluginWrapper(PICOPluginWrapper* wrapper)
 		PICO_BIND_ENTRY_POINT(ShareSpatialAnchorComplete),
 		PICO_BIND_ENTRY_POINT(DownloadSharedSpatialAnchorAsync),
 		PICO_BIND_ENTRY_POINT(DownloadSharedSpatialAnchorComplete),
+		/*
+		 * mr sdk 3.0 environment depth
+		*/
+		PICO_BIND_ENTRY_POINT(CreateEnvironmentDepthProvider),
+		PICO_BIND_ENTRY_POINT(DestroyEnvironmentDepthProvider),
+		PICO_BIND_ENTRY_POINT(StartEnvironmentDepthProvider),
+		PICO_BIND_ENTRY_POINT(StopEnvironmentDepthProvider),
+		PICO_BIND_ENTRY_POINT(CreateEnvironmentDepthSwapchain),
+		PICO_BIND_ENTRY_POINT(DestroyEnvironmentDepthSwapchain),
+		PICO_BIND_ENTRY_POINT(EnumerateEnvironmentDepthSwapchainImages),
+		PICO_BIND_ENTRY_POINT(GetEnvironmentDepthSwapchainState),
+		PICO_BIND_ENTRY_POINT(AcquireEnvironmentDepthImage),
+		PICO_BIND_ENTRY_POINT(SetEnvironmentDepthHandRemoval),
 		
 		//----------------MR 3.0-------
 

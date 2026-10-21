@@ -1,0 +1,29 @@
+PICO OpenXR Loader License Summary
+=================================
+
+This package includes files derived from the Khronos OpenXR SDK projects and
+PICO-authored modifications and extensions.
+
+Upstream origin
+---------------
+- https://github.com/KhronosGroup/OpenXR-SDK
+- https://github.com/KhronosGroup/OpenXR-SDK-Source
+
+Upstream license
+----------------
+Khronos-derived files in this package indicate the following SPDX license
+expression in their file headers:
+
+Apache-2.0 OR MIT
+
+Copies of the applicable upstream license texts are provided at:
+- ../Licenses/OpenXR-SDK.txt
+- ../Licenses/OpenXR-SDK-MIT.txt
+
+PICO modifications
+------------------
+PICO distributes modifications and extensions together with this package,
+including PICO-specific OpenXR extension declarations and the
+libopenxr_loader_pico.so binary.
+
+See NOTICE.txt for provenance and redistribution details.

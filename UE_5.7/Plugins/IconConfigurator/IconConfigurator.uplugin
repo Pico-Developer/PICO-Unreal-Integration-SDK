@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.1",
+	"FriendlyName": "PICO Icon Configurator",
+	"Description": "An editor tool for configuring and previewing layered icons in 2D and 3D viewports.",
+	"Category": "Editor",
+	"CreatedBy": "PICO Technology Co., Ltd",
+	"CreatedByURL": "https://www.picoxr.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "https://developer-global.pico-interactive.com/",
+	"CanContainContent": false,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "IconConfigurator",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
+		},
+		{
+			"Name": "IconConfiguratorRuntime",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

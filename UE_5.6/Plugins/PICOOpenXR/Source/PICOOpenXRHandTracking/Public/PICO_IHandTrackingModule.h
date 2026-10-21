@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
-#include "IInputDeviceModule.h"
 
 enum class EHandKeypoint : uint8;
 enum class EControllerHand : uint8;
+class FHandTrackingPICO;
 
 /**
  * The public interface to this module.  In most cases, this interface is only public to sibling modules
  * within this plugin.
  */
-class IPICOOpenXRHandTrackingModule : public IInputDeviceModule
+class IPICOOpenXRHandTrackingModule : public IModuleInterface
 {
 public:
 	/**
@@ -39,27 +39,5 @@ public:
 		return FModuleManager::Get().IsModuleLoaded("PICOOpenXRHandTracking");
 	}
 
-	/**
-	 * Returns the Input Device associated with this InputDeviceModule.
-	 *
-	 * @return Shared pointer to the Input Device.
-	 */
-	virtual TSharedPtr<IInputDevice> GetInputDevice() = 0;
-
-	/**
-	* Returns the LiveLinkSource associated with this PICOOpenXRHandTrackingPlugin.
-	*
-	* @return Shared pointer to the Input Device.
-	*/
-	virtual TSharedPtr<class ILiveLinkSource> GetLiveLinkSource() = 0;
-
-	/**
-	 * Checks if the LiveLinkSource as been created.
-	 *
-	 * @return True if the LiveLinkSource has been created with GetLiveLinkSource or AddLiveLinkSource
-	 */
-	virtual bool IsLiveLinkSourceValid() const = 0;
-
-	virtual void AddLiveLinkSource() = 0;
-	virtual void RemoveLiveLinkSource() = 0;
+	virtual FHandTrackingPICO* GetHandTrackingPICO() = 0;
 };

@@ -22,31 +22,19 @@ namespace Pxr_Audio
 			virtual ~APINative() override = default;
 
 			virtual const char* GetVersion(int* Major, int* Minor, int* Patch) override;
-			virtual PxrAudioSpatializer_Result CreateContext(PxrAudioSpatializer_RenderingMode Mode,
+			virtual PxrAudioSpatializer_Result CreateContext(PxrAudioSpatializer_RenderingQuality Quality,
 			                                                 size_t FramesPerBuffer,
 			                                                 size_t SampleRate) override;
 			virtual PxrAudioSpatializer_Result InitializeContext() override;
-			virtual PxrAudioSpatializer_Result SubmitMesh(
-				const float* Vertices,
-				int VerticesCount,
-				const int* Indices,
-				int IndicesCount,
-				PxrAudioSpatializer_AcousticsMaterial
-				Material,
-				int* GeometryId) override;
-			virtual PxrAudioSpatializer_Result SubmitMeshAndMaterialFactor(const float* Vertices,
-			                                                               int VerticesCount,
-			                                                               const int* Indices,
-			                                                               int IndicesCount,
-			                                                               const float* AbsorptionFactor,
-			                                                               float ScatteringFactor,
-			                                                               float TransmissionFactor,
-			                                                               int* GeometryId) override;
 			virtual PxrAudioSpatializer_Result SubmitMeshWithConfig(const float* Vertices, int VerticesCount,
 			                                                        const int* Indices, int IndicesCount,
 			                                                        const PxrAudioSpatializer_AcousticMeshConfig*
 			                                                        Config,
 			                                                        int* GeometryId) override;
+			virtual PxrAudioSpatializer_Result UpdateMesh(int GeometryId, const float* Vertices, int VerticesCount,
+			                                              const int* Indices, int IndicesCount,
+			                                              const PxrAudioSpatializer_AcousticMeshConfig* Config,
+			                                              int* NewGeometryId) override;
 			virtual PxrAudioSpatializer_Result RemoveMesh(int GeometryId) override;
 			virtual PxrAudioSpatializer_Result SetMeshEnable(int GeometryId, bool Enable) override;
 			virtual PxrAudioSpatializer_Result SetMeshConfig(int GeometryId,

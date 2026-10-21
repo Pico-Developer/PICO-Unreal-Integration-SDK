@@ -5,7 +5,6 @@
 #include "Engine/SkeletalMesh.h"
 #include "PICO_MovementUtility.h"
 
-int UFaceTrackingComponentPICO::FTComponentCount = 0;
 // Sets default values for this component's properties
 UFaceTrackingComponentPICO::UFaceTrackingComponentPICO()
 	: FTTargetMeshComponentName(NAME_None)
@@ -28,9 +27,8 @@ void UFaceTrackingComponentPICO::BeginPlay()
 {
 	Super::BeginPlay();
 
-	bool Supported;
 	TArray<EFaceTrackingModePICO> Modes;
-	UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(Supported, Modes);
+	bool Supported = UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(Modes);
 	if (!Supported)
 	{
 		UE_LOG(PICOOpenXRMovement, Warning, TEXT("Face tracking is not supported. (%s:%s)"), *GetOwner()->GetName(), *GetName());
@@ -58,7 +56,7 @@ void UFaceTrackingComponentPICO::BeginPlay()
 		SetComponentTickEnabled(false);
 		return;
 	}
-	++FTComponentCount;
+	bFaceTrackingStarted = true;
 }
 
 // Called every frame
@@ -112,15 +110,13 @@ void UFaceTrackingComponentPICO::TickComponent(float DeltaTime, ELevelTick TickT
 
 void UFaceTrackingComponentPICO::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (IsComponentTickEnabled())
+	if (bFaceTrackingStarted)
 	{
-		if (--FTComponentCount == 0)
+		if (!UMovementFunctionLibraryPICO::StopFaceTrackingPICO())
 		{
-			if (!UMovementFunctionLibraryPICO::StopFaceTrackingPICO())
-			{
-				UE_LOG(PICOOpenXRMovement, Warning, TEXT("Failed to stop face tracking. (%s: %s)"), *GetOwner()->GetName(), *GetName());
-			}
+			UE_LOG(PICOOpenXRMovement, Warning, TEXT("Failed to stop face tracking. (%s: %s)"), *GetOwner()->GetName(), *GetName());
 		}
+		bFaceTrackingStarted = false;
 	}
 
 	Super::EndPlay(EndPlayReason);

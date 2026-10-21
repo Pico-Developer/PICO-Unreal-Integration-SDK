@@ -66,9 +66,8 @@ namespace PICOLiveLink
 	template <>
 	bool FFaceSubject::IsSupported()
 	{
-		bool bSupported;
 		TArray<EFaceTrackingModePICO> SupportedModes;
-		UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(bSupported, SupportedModes);
+		bool bSupported = UMovementFunctionLibraryPICO::GetFaceTrackingSupportedPICO(SupportedModes);
 		return bSupported;
 	}
 

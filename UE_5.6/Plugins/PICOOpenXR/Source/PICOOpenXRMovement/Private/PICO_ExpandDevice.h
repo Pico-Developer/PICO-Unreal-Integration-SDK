@@ -4,25 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "PICO_MovementFunctionLibrary.h"
-#include "IOpenXRExtensionPlugin.h"
 
-class FExpandDevicePICO : public IOpenXRExtensionPlugin
+class FExpandDevicePICO
 {
 public:
 	FExpandDevicePICO();
 	virtual ~FExpandDevicePICO() {}
 
-	void Register();
-	void Unregister();
-
-	/** IOpenXRExtensionPlugin */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("ExpandDevicePICO"));
-	}
-	virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual const void* OnGetSystem(XrInstance InInstance, const void* InNext) override;
-	virtual void PostCreateSession(XrSession InSession) override;
+	void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	const void* OnGetSystem(XrInstance InInstance, const void* InNext);
+	void PostCreateSession(XrSession InSession);
 
 	bool EnumerateExpandDevice(TArray<int64>& IDs);
 	bool SetExpandDeviceMotorVibrate(int64 ID, int64 Duration, int32 Frequency, float Amp);

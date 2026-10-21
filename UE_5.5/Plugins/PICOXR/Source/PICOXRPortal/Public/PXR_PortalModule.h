@@ -15,6 +15,10 @@
 #include "PXR_PortalSettings.h"
 #include "Modules/ModuleManager.h"
 #include "Settings/EditorSettings.h"
+#include "ToolMenus.h"
+#include "Framework/Docking/TabManager.h"
+#include "Widgets/Docking/SDockTab.h"
+#include "UObject/UObjectGlobals.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogPortal, Log, All);
 static const FName EditorSettingsTabName("PICO Project Settings");

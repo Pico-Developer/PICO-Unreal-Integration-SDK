@@ -4,41 +4,41 @@
 
 #include "PICO_MovementFunctionLibrary.h"
 #include "CoreMinimal.h"
-#include "IOpenXRExtensionPlugin.h"
 
-class FFaceTrackingPICO : public IOpenXRExtensionPlugin
+class FFaceTrackingPICO
 {
 public:
 	FFaceTrackingPICO();
-	virtual ~FFaceTrackingPICO() {}
+	virtual ~FFaceTrackingPICO();
 
-	void Register();
-	void Unregister();
+	void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	const void* OnGetSystem(XrInstance InInstance, const void* InNext);
+	void PostGetSystem(XrInstance InInstance, XrSystemId InSystem);
+	void PostCreateSession(XrSession InSession);
+	void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace);
 
-	/** IOpenXRExtensionPlugin */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("FaceTrackingPICO"));
-	}
-	virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual const void* OnGetSystem(XrInstance InInstance, const void* InNext) override;
-	virtual void PostGetSystem(XrInstance InInstance, XrSystemId InSystem) override;
-	virtual void PostCreateSession(XrSession InSession) override;
-	virtual void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace) override;
-
-	bool GetFaceTrackingSupported(bool& Supported, TArray<EFaceTrackingModePICO>& Modes);
+	bool GetFaceTrackingSupported(TArray<EFaceTrackingModePICO>& Modes);
 	bool StartFaceTracking(EFaceTrackingModePICO Mode);
 	bool StopFaceTracking();
 	bool SetFaceTrackingCurrentMode(EFaceTrackingModePICO Mode);
 	bool GetFaceTrackingCurrentMode(EFaceTrackingModePICO& Mode);
 	bool GetFaceTrackingData(int64 DisplayTime, FFaceStatePICO& outState);
 
-
-
 private:
-	bool bCapabilityUpdated;
-	bool bFaceTrackingAvailable;
+	bool bSupportsFaceTracking = false;
+	bool bFaceTrackingFunctionsAvailable = false;
 
 	XrSession Session;
 	XrTime Time;
+	int32 FaceTrackerRefCount = 0;
+	EFaceTrackingModePICO FaceTrackingMode = EFaceTrackingModePICO::Default;
+
+	PFN_xrEnumerateFacialSimulationModesBD xrEnumerateFacialSimulationModesBD = nullptr;
+	PFN_xrCreateFaceTrackerBD xrCreateFaceTrackerBD = nullptr;
+	PFN_xrDestroyFaceTrackerBD xrDestroyFaceTrackerBD = nullptr;
+	PFN_xrGetFacialSimulationDataBD xrGetFacialSimulationDataBD = nullptr;
+	PFN_xrSetFacialSimulationModeBD xrSetFacialSimulationModeBD = nullptr;
+	PFN_xrGetFacialSimulationModeBD xrGetFacialSimulationModeBD = nullptr;
+
+	XrFaceTrackerBD FaceTracker = XR_NULL_HANDLE;
 };

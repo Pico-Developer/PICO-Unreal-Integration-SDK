@@ -5,30 +5,14 @@
 #include "IXRTrackingSystem.h"
 #include "OpenXRCore.h"
 #include "IOpenXRHMDModule.h"
-#include "PICOOpenXRRuntimeSettings.h"
 
 FExpandDevicePICO::FExpandDevicePICO()
 {
 }
 
-void FExpandDevicePICO::Register()
+void FExpandDevicePICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	RegisterOpenXRExtensionModularFeature();
-}
-
-void FExpandDevicePICO::Unregister()
-{
-	UnregisterOpenXRExtensionModularFeature();
-}
-
-bool FExpandDevicePICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
-{
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("EnableExpandDevicesEXT"))
-	{
-		OutExtensions.Add("XR_PICO_expand_device");
-		return true;
-	}
-	return false;
+	OutExtensions.Add(XR_PICO_EXPAND_DEVICE_EXTENSION_NAME);
 }
 
 const void* FExpandDevicePICO::OnGetSystem(XrInstance InInstance, const void* InNext)

@@ -273,7 +273,7 @@ public:
     /// </returns>
     bool LaunchInvitePanel(const FOnLaunchInvitePanelComplete& Delegate = FOnLaunchInvitePanelComplete());
 
-    /// <summary>Share videos or images to Douyin (a video app in Mainland China). Currently, this function is available in Mainland China only.
+    /// <summary>Share videos or images to SocialMedia (a video app in Mainland China). Currently, this function is available in Mainland China only.
     /// @note
     /// * Video file requirements:
     /// For a better viewing experience, it is recommended to upload a 16:9 vertical video with a resolution of 720p(1280x720) and above
@@ -293,7 +293,7 @@ public:
     /// <param name="InVideoThumbPath">The path to the video thumbnail. If not defined, the first frame of the video will become the video thumbnail.</param> 
     /// <param name="InImagePaths">The array of image paths.</param> 
     /// <param name="InShareType">The share type:
-    /// * `0`: Douyin
+    /// * `0`: SocialMedia
     /// * `1`: None
     /// </param>
     /// <param name ="Delegate">Will be executed when the request has been completed.  

@@ -67,30 +67,30 @@ namespace Pxr_Audio
 			TransformPicoCoordinate[15] = 1.0f;
 		}
 
-		PxrAudioSpatializer_RenderingMode ConvertToInternalRenderingMode(
-			const EPxrAudioSpatializer_RenderingMode RenderingModeUe)
+		PxrAudioSpatializer_RenderingQuality ConvertToInternalRenderingMode(
+			const EPxrAudioSpatializer_RenderingQuality RenderingModeUe)
 		{
 			switch (RenderingModeUe)
 			{
-			case EPxrAudioSpatializer_RenderingMode::Low_Quality:
+			case EPxrAudioSpatializer_RenderingQuality::Low_Quality:
 				return PASP_LOW_QUALITY;
-			case EPxrAudioSpatializer_RenderingMode::Medium_Quality:
+			case EPxrAudioSpatializer_RenderingQuality::Medium_Quality:
 				return PASP_MEDIUM_QUALITY;
-			case EPxrAudioSpatializer_RenderingMode::High_Quality:
+			case EPxrAudioSpatializer_RenderingQuality::High_Quality:
 				return PASP_HIGH_QUALITY;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_First_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_First_Order:
 				return PASP_AMBISONIC_FIRST_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Second_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Second_Order:
 				return PASP_AMBISONIC_SECOND_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Third_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Third_Order:
 				return PASP_AMBISONIC_THIRD_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Fourth_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Fourth_Order:
 				return PASP_AMBISONIC_FOURTH_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Fifth_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Fifth_Order:
 				return PASP_AMBISONIC_FIFTH_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Sixth_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Sixth_Order:
 				return PASP_AMBISONIC_SIXTH_ORDER;
-			case EPxrAudioSpatializer_RenderingMode::Ambisonic_Seventh_Order:
+			case EPxrAudioSpatializer_RenderingQuality::Ambisonic_Seventh_Order:
 				return PASP_AMBISONIC_SEVENTH_ORDER;
 			default:
 				return PASP_MEDIUM_QUALITY;

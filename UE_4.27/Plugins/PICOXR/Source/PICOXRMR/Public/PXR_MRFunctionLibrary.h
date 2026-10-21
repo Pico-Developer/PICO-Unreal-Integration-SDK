@@ -257,6 +257,18 @@ public:
 	static bool PXR_CloseSceneCaptureService();
 
 	/// <summary>
+	/// Closes Spatial Plane scanning..
+	/// </summary>
+	/// <returns>Bool:
+	/// <ul>
+	/// <li>`true` - success</li>
+	/// <li>`false` - failure</li>
+	/// </ul>
+	/// </returns>
+	UFUNCTION(BlueprintCallable, Category = "PXR|PXRMR")
+	static bool PXR_CloseSpatialPlaneScanning();
+	
+	/// <summary>
 	///  Creates Scene Bounding Polygon.
 	/// </summary>
 	/// <param name="BoundActor">Specifies the actor bound by polygon.</param>

@@ -106,7 +106,7 @@ void UPICORequestSpatialMesh_AsyncAction::HandleRequestSpatialMeshComplete(const
 	FVector BaseOffsetInMeters = FPICOProviderManager::GetBaseOffsetInMeters();
 	float WorldToMetersScale = FPICOProviderManager::GetWorldToMetersScale();
 	FTransform TrackingToWorld=FPICOProviderManager::GetTrackingToWorldTransform();
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
+	AsyncTask(ENamedThreads::GameThread, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
 	{
 		TArray<FPICOSpatialMeshInfo> MeshInfos;
 		TSet<FPICOSpatialUUID> NeedDeleteEntitySet;
@@ -192,6 +192,116 @@ void UPICOLaunchSpatialMeshScanning_AsyncAction::HandleLaunchMeshScanningComplet
 
 	SetReadyToDestroy();
 }
+
+
+UPICORequestSpatialPlane_AsyncAction* UPICORequestSpatialPlane_AsyncAction::PXR_RequestSpatialPlaneInfos_Async()
+{
+	UPICORequestSpatialPlane_AsyncAction* Action = NewObject<UPICORequestSpatialPlane_AsyncAction>();
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICORequestSpatialPlane_AsyncAction::HandleRequestSpatialPlaneComplete(const FPICOSpatialHandle& FutureHandle)
+{
+	FQuat BaseOrientation = FPICOProviderManager::GetBaseOrientation();
+	FVector BaseOffsetInMeters = FPICOProviderManager::GetBaseOffsetInMeters();
+	float WorldToMetersScale = FPICOProviderManager::GetWorldToMetersScale();
+	FTransform TrackingToWorld=FPICOProviderManager::GetTrackingToWorldTransform();
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,this]()
+	{
+		TArray<FPICOSpatialPlaneInfo> PlaneInfos;
+		TSet<FPICOSpatialUUID> NeedDeleteEntitySet;
+		EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+		if (PXR_PlaneProvider::GetInstance()->GetSpatialTrianglePlaneInfos(FutureHandle,TrackingToWorld,BaseOrientation,BaseOffsetInMeters,WorldToMetersScale,PlaneInfos,OutResult))
+		{
+			OnSuccess.Broadcast(OutResult, PlaneInfos);
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+		SetReadyToDestroy();
+	});
+}
+
+void UPICOLaunchSpatialPlaneScanning_AsyncAction::Activate()
+{
+	if(!PXR_PlaneProvider::GetInstance()->IsHandleValid())
+	{
+		const UPICOXRSettings* Settings = GetDefault<UPICOXRSettings>();
+
+		if (Settings->bEnablePlane)
+		{
+			FPICOSenseDataProviderCreateInfoPlane cFPICOSenseDataProviderCreateInfoPlane = {};
+			
+			EPICOResult OutResult=EPICOResult::PXR_Error_Unknow;
+			PXR_PlaneProvider::GetInstance()->CreateProvider(cFPICOSenseDataProviderCreateInfoPlane);
+		}
+	}
+
+	EPICOResult Result=EPICOResult::PXR_Error_Unknow;
+	const bool bStarted = FPICOProviderManager::PXR_StartSenseDataProviderAsync
+	(
+		FPICOPollFutureDelegate::CreateUObject(this,
+		&UPICOLaunchSpatialPlaneScanning_AsyncAction::HandleLaunchPlaneScanningComplete)
+		, EPICOProviderType::Pico_Provider_Plane,Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+UPICOLaunchSpatialPlaneScanning_AsyncAction* UPICOLaunchSpatialPlaneScanning_AsyncAction::PXR_LaunchSpatialPlaneScanning_Async()
+{
+	UPICOLaunchSpatialPlaneScanning_AsyncAction* Action = NewObject<UPICOLaunchSpatialPlaneScanning_AsyncAction>();
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UPICOLaunchSpatialPlaneScanning_AsyncAction::HandleLaunchPlaneScanningComplete(const FPICOSpatialHandle& FutureHandle)
+{
+	FPICOSenseDataProviderStartCompletion SenseDataProviderStartCompletion;
+	EPICOResult OutResult = EPICOResult::PXR_Error_Unknow;
+
+	if (PXR_PlaneProvider::GetInstance()->StartSenseDataProviderComplete(FutureHandle, SenseDataProviderStartCompletion,OutResult))
+	{
+		if (PXR_SUCCESS(SenseDataProviderStartCompletion.FutureResult))
+		{
+			OnSuccess.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+		else
+		{
+			OnFailure.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+	
+	SetReadyToDestroy();
+}
+
+void UPICORequestSpatialPlane_AsyncAction::Activate()
+{
+	EPICOResult Result = EPICOResult::PXR_Error_Unknow;
+
+	const bool bStarted = PXR_PlaneProvider::GetInstance()->RequestSpatialTrianglePlane
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &UPICORequestSpatialPlane_AsyncAction::HandleRequestSpatialPlaneComplete),Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
 
 void UPICOLaunchSpatialAnchorService_AsyncAction::Activate()
 {

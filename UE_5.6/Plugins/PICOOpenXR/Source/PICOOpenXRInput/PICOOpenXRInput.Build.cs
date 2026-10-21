@@ -7,16 +7,23 @@ public class PICOOpenXRInput : ModuleRules
 {
     public PICOOpenXRInput(ReadOnlyTargetRules Target) : base(Target)
     {
+        PublicDependencyModuleNames.AddRange(
+            new string[]
+            {
+                "Core",
+                "CoreUObject"
+            }
+        );
+
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
-                    "Core",
-                    "CoreUObject",
                     "Engine",
                     "HeadMountedDisplay",
                     "XRBase",
                     "InputCore",
                     "OpenXRHMD",
+                    "PICOOpenXRHMD",
                     "Slate",
                     "SlateCore",
                     "PICOOpenXRLoader",

@@ -1,6 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_SceneCapture.h"
+#include "PICO_MRModule.h"
 
 #include "IOpenXRHMDModule.h"
 #include "OpenXRCore.h"
@@ -9,24 +12,22 @@ FSceneCaptureExtensionPICO::FSceneCaptureExtensionPICO()
 {
 }
 
-bool FSceneCaptureExtensionPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+FSceneCaptureExtensionPICO* FSceneCaptureExtensionPICO::GetInstance()
 {
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableSceneCapture"))
-	{
-		OutExtensions.Add(XR_PICO_SCENE_CAPTURE_EXTENSION_NAME);
-		return true;
-	}
-	return false;
+	return &FPICOOpenXRMRModule::Get().GetMRModuleExtension().GetSceneCapturePICO();
+}
+
+void FSceneCaptureExtensionPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
+{
+	OutExtensions.Add(XR_PICO_SCENE_CAPTURE_EXTENSION_NAME);
 }
 
 void FSceneCaptureExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId InSystem)
 {
-	FMixedRealityPICO::PostGetSystem(InInstance, InSystem);
-
 	if (FSpatialSensingExtensionPICO::GetInstance()->IsSupportsSpatialSensing())
 	{
 		bSupportsSceneCaptureEXT = IOpenXRHMDModule::Get().IsExtensionEnabled(XR_PICO_SCENE_CAPTURE_EXTENSION_NAME);
-		UE_LOG(LogMRPICO,Log, TEXT("bSupportsSceneCaptureEXT:%d"), bSupportsSceneCaptureEXT)
+		UE_LOG(LogMRPICO,Verbose, TEXT("bSupportsSceneCaptureEXT:%d"), bSupportsSceneCaptureEXT)
 
 		if (bSupportsSceneCaptureEXT)
 		{
@@ -34,7 +35,7 @@ void FSceneCaptureExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId
 			XrSystemProperties SPSceneCapture{ XR_TYPE_SYSTEM_PROPERTIES,&SceneCapturePropertiesPICO };
 			XR_ENSURE(xrGetSystemProperties(InInstance, InSystem, &SPSceneCapture));
 			bSupportsSceneCapture = SceneCapturePropertiesPICO.supportsSceneCapture == XR_TRUE;
-			UE_LOG(LogMRPICO,Log, TEXT("bSupportsSceneCapture:%d"), bSupportsSceneCapture)
+			UE_LOG(LogMRPICO,Verbose, TEXT("bSupportsSceneCapture:%d"), bSupportsSceneCapture)
 
 			XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrStartSceneCaptureAsyncPICO", (PFN_xrVoidFunction*)&xrStartSceneCaptureAsyncPICO));
 			XR_ENSURE(xrGetInstanceProcAddr(InInstance, "xrStartSceneCaptureCompletePICO", (PFN_xrVoidFunction*)&xrStartSceneCaptureCompletePICO));
@@ -314,6 +315,12 @@ bool FSceneCaptureExtensionPICO::CreateProvider(const FSenseDataProviderCreateIn
 	bool bResult=false;
 	if (bSupportsSceneCapture)
 	{
+		if (Session == XR_NULL_HANDLE)
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		Type = EProviderTypePICO::Pico_Provider_Scene_Capture;
 		if (IsHandleValid())
 		{

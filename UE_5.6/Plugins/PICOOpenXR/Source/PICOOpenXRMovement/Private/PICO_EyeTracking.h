@@ -4,41 +4,40 @@
 
 #include "CoreMinimal.h"
 #include "PICO_MovementFunctionLibrary.h"
-#include "IOpenXRExtensionPlugin.h"
 
-class FEyeTrackingPICO : public IOpenXRExtensionPlugin
+class FEyeTrackingPICO
 {
 public:
 	FEyeTrackingPICO();
 	virtual ~FEyeTrackingPICO() {}
 
-	void Register();
-	void Unregister();
+	void GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions);
+	void PostGetSystem(XrInstance InInstance, XrSystemId InSystem);
+	void PostCreateSession(XrSession InSession);
+	const void* OnBeginSession(XrSession InSession, const void* InNext);
+	void UpdateDeviceLocations(XrSession InSession, XrTime DisplayTime, XrSpace TrackingSpace);
 
-	/** IOpenXRExtensionPlugin */
-	virtual FString GetDisplayName() override
-	{
-		return FString(TEXT("EyeTrackingPICO"));
-	}
-	virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;
-	virtual void PostGetSystem(XrInstance InInstance, XrSystemId InSystem) override;
-	virtual void PostCreateSession(XrSession InSession) override;
-
-	bool IsEyeTrackerSupported(bool& Supported) { return bIsEyeTrackerSupported; }
+	bool IsEyeTrackerSupported(bool& Supported);
 	bool IsEyeTrackingRunning() { return bIsEyeTrackingRunning; }
 	bool StartEyeTracking();
 	bool StopEyeTracking();
-	bool GetEyeTrackingData(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData, float WorldToMeters = 100.0f);
+	bool GetEyeTrackingData(FEyeDataPICO& LeftEye, FEyeDataPICO& RightEye, bool& bDepthValid, float& DepthConfidence, float& Depth, bool QueryGazeData, FEyeTrackerGazeData& OutGazeData);
+
 
 private:
-	XrSession Session;
+	XrSession Session = XR_NULL_HANDLE;
 
 	PFN_xrCreateEyeTrackerPICO xrCreateEyeTrackerPICO = nullptr;
 	PFN_xrDestroyEyeTrackerPICO xrDestroyEyeTrackerPICO = nullptr;
 	PFN_xrGetEyeDataPICO xrGetEyeDataPICO = nullptr;
+	PFN_xrGetEyeGazePICO xrGetEyeGazePICO = nullptr;
 
 	bool bIsEyeTrackerSupported = false;
 	bool bIsEyeTrackingRunning = false;
 
 	XrEyeTrackerPICO EyeTracker = XR_NULL_HANDLE;
+	XrTime DisplayTime = 0;
+	XrSpace TrackingSpace = XR_NULL_HANDLE;
+
+	class IXRTrackingSystem* XRTrackingSystem = nullptr;
 };

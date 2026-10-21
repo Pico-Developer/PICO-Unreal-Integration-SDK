@@ -28,8 +28,11 @@ DECLARE_MULTICAST_DELEGATE(FPICOPollFutureFromHMDDelegate);
 
 class FPICOXRRenderBridge;
 class UPICOContentResourceFinder;
-
 #ifdef PICO_CUSTOM_ENGINE
+using FExternalTextureHandle = uint64;
+void RenderEnvironmentDepthMinMaxTexture_RenderThread(IRendererModule* RendererModule, FTextureRHIRef EnvironmentDepthMinMaxTexture,
+	FTextureRHIRef EnvironmentDepthSwapchain, FRHICommandListImmediate& RHICmdList);
+
 enum FHomeResetTypes
 {
 	HomeResetOrientation = 0x1,
@@ -132,6 +135,10 @@ public:
 	virtual float GetWorldToMetersScale() const override;
 	virtual void OnBeginRendering_GameThread() override;
 	virtual void OnBeginRendering_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& ViewFamily) override;
+#ifdef PICO_CUSTOM_ENGINE
+	void PostBeginFrame_RHIThread();
+	void OnBeginRenderingLate_RenderThread(FRHICommandListImmediate& RHICmdList);
+#endif
 	virtual bool OnStartGameFrame(FWorldContext& WorldContext) override;
 	virtual bool OnEndGameFrame(FWorldContext& WorldContext) override;
 	virtual class IXRLoadingScreen* CreateLoadingScreen() override { return GetSplash().Get(); }
@@ -161,7 +168,7 @@ public:
 	virtual	bool GetTrackingSensorProperties(int32 InDeviceId, FQuat& OutOrientation, FVector& OutPosition, FXRSensorProperties& OutSensorProperties) override;
 	virtual void SetTrackingOrigin(EHMDTrackingOrigin::Type NewOrigin) override;
 	virtual EHMDTrackingOrigin::Type GetTrackingOrigin() const override;
-	virtual bool DoesSupportPositionalTracking() const override;
+	virtual bool DoesSupportPositionalTracking() const override { return true; }
 	virtual bool IsHeadTrackingAllowed() const override;
 	
 	/** FHMDSceneViewExtension interface */
@@ -215,6 +222,10 @@ public:
 	virtual bool NeedReAllocateShadingRateTexture(const TRefCountPtr<IPooledRenderTarget>& FoveationTarget) override;
 	virtual bool AllocateShadingRateTexture(uint32 Index, uint32 RenderSizeX, uint32 RenderSizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags Flags, ETextureCreateFlags TargetableTextureFlags, FTextureRHIRef& OutTexture, FIntPoint& OutTextureSize) override;
 
+#ifdef PICO_CUSTOM_ENGINE
+	virtual bool FindEnvironmentDepthTexture_RenderThread(FTextureRHIRef& OutTexture, FTextureRHIRef& OutMinMaxTexture, FVector2f& OutDepthFactors, FMatrix44f OutScreenToDepthMatrices[2], FMatrix44f OutDepthViewProjMatrices[2]) override;
+#endif
+	
   /** FXRRenderTargetManager interface */
 	virtual void CalculateRenderTargetSize(const class FViewport& Viewport, uint32& InOutSizeX, uint32& InOutSizeY)override;
 	virtual bool NeedReAllocateViewportRenderTarget(const FViewport& Viewport) override;
@@ -284,6 +295,17 @@ public:
 	bool UpdateHMDBatteryLevelFromJava(int32& BatteryLevel);
 	bool UpdateHMDBatteryLevelFromPollEvent(int32& BatteryLevel);
 	bool SetCurrentCoordinateType(EPICOXRCoordinateType InCoordinateType);
+#ifdef PICO_CUSTOM_ENGINE
+	//DepthAP
+	bool LauncheEnvironmentDepthProvider();
+	bool CloseEnvironmentDepthProvider();
+	bool InitializeEnvironmentDepth_RenderThread();
+	bool DestroyEnvironmentDepth_RenderThread();
+	bool StartEnvironmentDepth_RenderThread();
+	bool StopEnvironmentDepth_RenderThread();
+	bool AcquireEnvironmentDepthTexture_RHIThread(int64 PredictedDisplayTime);
+	bool GetEnvironmentDepthFrameDesc_RenderThread(TOptional<PxrEnvironmentDepthImage>& OutEnvironmentDepthFrameDesc);
+#endif
 	
 	// Game thread
 	FSettingsPtr GameSettings;
@@ -387,6 +409,26 @@ private:
 #ifdef PICO_CUSTOM_ENGINE
 	// Stores TrackingToWorld from previous frame
 	FTransform LastTrackingToWorld;
+
+	bool ComputeEnvironmentDepthParameters_RenderThread(FVector2f& DepthFactors, FMatrix44f ScreenToDepth[2],
+		FMatrix44f DepthViewProj[2], int& SwapchainIndex);
+	TArray<FTextureRHIRef> CreateEnvironmentDepthSwapChainTextures_RenderThread(uint32 InSizeX, uint32 InSizeY, EPixelFormat InFormat,uint32 InNumMips, uint32 InNumSamples,ERHIResourceType InResourceType,
+	const TArray<FExternalTextureHandle>& InTextures, ETextureCreateFlags InTexCreateFlags, const TCHAR* DebugName) const;
+
+	IRendererModule* RendererModule = nullptr;
+	uint64_t EnvironmentDepthProvider = 0;
+	uint64_t EnvironmentDepthSwapchainHandle = 0;
+	PxrEnvironmentDepthSwapchainState EnvironmentDepthSwapchainState{ PXR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_STATE_META };
+
+	TArray<FTextureRHIRef> EnvironmentDepthSwapchain;
+	FTextureRHIRef EnvironmentDepthMinMaxTexture;
+	int PrevEnvironmentDepthMinMaxSwapchainIndex = -1;
+	
+	bool bEnvironmentDepthRunning = false;
+	bool bExtEnvironmentDepthAvailable = true;
+	TOptional<PxrEnvironmentDepthImage> EnvironmentDepthFrameDesc;
+	FCriticalSection EnvironmentDepthLock;
+	TArray<FExternalTextureHandle> EnvironmentDepthTextures;
 #endif
 
 	void ProcessEvent(int EventCount, PxrEventDataBuffer** EventData);
@@ -407,6 +449,7 @@ private:
 	FIntPoint IdealRenderTargetSize;
 	FPICOXRFrustum LeftFrustum;
 	FPICOXRFrustum RightFrustum;
+	FPICOXRFrustum BothFrustum;
 	TRefCountPtr<FPICOXRRenderBridge> RenderBridge;
 	class UPICOXRSettings* PICOXRSetting;
 	FString RHIString;

@@ -9,6 +9,7 @@
 #include "PXR_HMDRuntimeSettings.h"
 #include "PXR_BoundarySystem.h"
 #include "PXR_Utils.h"
+#include "PXR_EventManager.h"
 
 FPICOXRIPDChangedDelegate UPICOXRHMDFunctionLibrary::PICOXRIPDChangedCallback;
 FPICOXRHMD* UPICOXRHMDFunctionLibrary::PICOXRHMD = nullptr;
@@ -57,14 +58,6 @@ FVector UPICOXRHMDFunctionLibrary::PXR_GetCurrentPosition()
 	return Position;
 #endif
 	return FVector();
-}
-
-bool UPICOXRHMDFunctionLibrary::PXR_DoesSupportPositionalTracking()
-{
-#if PLATFORM_ANDROID
-	return GetPICOXRHMD()->DoesSupportPositionalTracking();
-#endif
-	return false;
 }
 
 FVector UPICOXRHMDFunctionLibrary::PXR_GetAngularVelocity()
@@ -697,4 +690,26 @@ FString UPICOXRHMDFunctionLibrary::PXR_GetDeviceName()
 	}
 #endif
 	return result;
+}
+
+void UPICOXRHMDFunctionLibrary::PXR_LaunchEnvironmentDepth()
+{
+#ifdef PICO_CUSTOM_ENGINE
+	FPICOXRHMD* PICOHMD = GetPICOXRHMD();
+	if (PICOHMD != nullptr)
+	{
+		PICOHMD->LauncheEnvironmentDepthProvider();
+	}
+#endif
+}
+
+void UPICOXRHMDFunctionLibrary::PXR_CloseEnvironmentDepth()
+{
+#ifdef PICO_CUSTOM_ENGINE
+	FPICOXRHMD* PICOHMD = GetPICOXRHMD();
+	if (PICOHMD != nullptr)
+	{
+		PICOHMD->CloseEnvironmentDepthProvider();
+	}
+#endif
 }

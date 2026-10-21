@@ -1,0 +1,86 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "6.0.0",
+	"FriendlyName": "PICO Spatial",
+	"Description": "PICO Spatial enables Unreal Engine projects to create system-rendered spatial applications for PICO SpaceOS.",
+	"Category": "Virtual Reality",
+	"CreatedBy": "PICO, Inc.",
+	"CreatedByURL": "https://www.picoxr.com",
+	"EngineVersion": "5.7.0",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "https://developer-global.pico-interactive.com",
+	"EnabledByDefault": false,
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Installed": true,
+	"SupportedTargetPlatforms": [
+		"Win64",
+		"Linux",
+		"Android",
+		"Mac"
+	],
+	"Modules": [
+		{
+			"Name": "PICOSpatial",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux",
+				"Android",
+				"Mac"
+			]
+		},
+		{
+			"Name": "PICOSpatialRuntimeSettings",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux",
+				"Android",
+				"Mac"
+			]
+		},
+		{
+			"Name": "PICOSpatialUSD",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux",
+				"Mac"
+			]
+		},
+		{
+			"Name": "PICOSpatialEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux",
+				"Mac"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "GLTFExporter",
+			"Enabled": true
+		},
+		{
+			"Name": "GeometryScripting",
+			"Enabled": true
+		},
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "USDImporter",
+			"Enabled": true
+		}
+	]
+}

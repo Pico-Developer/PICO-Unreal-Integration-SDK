@@ -55,8 +55,7 @@ const FKey PICOHI_Right_Grasp_Axis("PICOHI_Right_Grasp_Axis");
 const FKey PICOHI_Right_Grasp_Click("PICOHI_Right_Grasp_Click");
 
 class FPICOOpenXRHandInteractionModule :
-	public IPICOOpenXRHandInteractionModule,
-	public IOpenXRExtensionPlugin
+	public IPICOOpenXRHandInteractionModule
 {
 public:
 	FPICOOpenXRHandInteractionModule()
@@ -66,7 +65,6 @@ public:
 	virtual void StartupModule() override
 	{
 		IPICOOpenXRHandInteractionModule::StartupModule();
-		RegisterOpenXRExtensionModularFeature();
 
 		// HACK: Generic Application might not be instantiated at this point so we create the input device with a
 		// dummy message handler. When the Generic Application creates the input device it passes a valid message
@@ -212,9 +210,9 @@ FPICOOpenXRHandInteraction::~FPICOOpenXRHandInteraction()
 
 bool FPICOOpenXRHandInteraction::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
 {
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bIsHandTrackingUsed"))
+	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey(TEXT("bIsHandTrackingUsed")) && UPICOOpenXRRuntimeSettings::GetBoolConfigByKey(TEXT("bEnableHandInteractionEXT")))
 	{
-		OutExtensions.Add("XR_EXT_hand_interaction");
+		OutExtensions.Add(XR_EXT_HAND_INTERACTION_EXTENSION_NAME);
 		return true;
 	}
 	return false;
@@ -223,6 +221,16 @@ bool FPICOOpenXRHandInteraction::GetRequiredExtensions(TArray<const ANSICHAR*>& 
 void FPICOOpenXRHandInteraction::PostCreateInstance(XrInstance InInstance)
 {
 	Instance = InInstance;
+}
+
+const void* FPICOOpenXRHandInteraction::OnCreateSession(XrInstance InInstance, XrSystemId InSystem, const void* InNext)
+{
+	UPICOOpenXRRuntimeSettings* Settings = GetMutableDefault<UPICOOpenXRRuntimeSettings>();
+	if (Settings)
+	{
+		bSupportHandInteractionLeftRight = Settings->bIsHandTrackingUsed && Settings->bEnableHandInteractionEXT && Settings->bSupportHandInteractionLeftRight;
+	}
+	return InNext;
 }
 
 void FPICOOpenXRHandInteraction::OnDestroySession(XrSession InSession)
@@ -378,8 +386,11 @@ void FPICOOpenXRHandInteraction::AttachActionSets(TSet<XrActionSet>& OutActionSe
 
 void FPICOOpenXRHandInteraction::GetActiveActionSetsForSync(TArray<XrActiveActionSet>& OutActiveSets)
 {
-	XrActiveActionSet ActiveTrackerSet{ HandInteractionActionSet, XR_NULL_PATH };
-	OutActiveSets.Add(ActiveTrackerSet);
+	if (bActionsAttached)
+	{
+		XrActiveActionSet ActiveTrackerSet{ HandInteractionActionSet, XR_NULL_PATH };
+		OutActiveSets.Add(ActiveTrackerSet);
+	}
 }
 
 bool FPICOOpenXRHandInteraction::GetControllerOrientationAndPosition(const int32 ControllerIndex, const FName MotionSource, FRotator& OutOrientation, FVector& OutPosition, float WorldToMetersScale) const
@@ -394,11 +405,11 @@ bool FPICOOpenXRHandInteraction::GetControllerOrientationAndPosition(const int32
 		return GetControllerOrientationAndPosition(ControllerIndex, "LeftGrip", OutOrientation, OutPosition, WorldToMetersScale)
 			|| GetControllerOrientationAndPosition(ControllerIndex, "RightGrip", OutOrientation, OutPosition, WorldToMetersScale);
 	}
-	else if (MotionSource == "Left")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Left")
 	{
 		return GetControllerOrientationAndPosition(ControllerIndex, "LeftGrip", OutOrientation, OutPosition, WorldToMetersScale);
 	}
-	else if (MotionSource == "Right")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Right")
 	{
 		return GetControllerOrientationAndPosition(ControllerIndex, "RightGrip", OutOrientation, OutPosition, WorldToMetersScale);
 	}
@@ -428,11 +439,11 @@ bool FPICOOpenXRHandInteraction::GetControllerOrientationAndPositionForTime(cons
 		return GetControllerOrientationAndPositionForTime(ControllerIndex, "LeftGrip", Time, OutTimeWasUsed, OutOrientation, OutPosition, OutbProvidedLinearVelocity, OutLinearVelocity, OutbProvidedAngularVelocity, OutAngularVelocityAsAxisAndLength, OutbProvidedLinearAcceleration, OutLinearAcceleration, WorldToMetersScale)
 			|| GetControllerOrientationAndPositionForTime(ControllerIndex, "RightGrip", Time, OutTimeWasUsed, OutOrientation, OutPosition, OutbProvidedLinearVelocity, OutLinearVelocity, OutbProvidedAngularVelocity, OutAngularVelocityAsAxisAndLength, OutbProvidedLinearAcceleration, OutLinearAcceleration, WorldToMetersScale);
 	}
-	else if (MotionSource == "Left")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Left")
 	{
 		return GetControllerOrientationAndPositionForTime(ControllerIndex, "LeftGrip", Time, OutTimeWasUsed, OutOrientation, OutPosition, OutbProvidedLinearVelocity, OutLinearVelocity, OutbProvidedAngularVelocity, OutAngularVelocityAsAxisAndLength, OutbProvidedLinearAcceleration, OutLinearAcceleration, WorldToMetersScale);
 	}
-	else if (MotionSource == "Right")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Right")
 	{
 		return GetControllerOrientationAndPositionForTime(ControllerIndex, "RightGrip", Time, OutTimeWasUsed, OutOrientation, OutPosition, OutbProvidedLinearVelocity, OutLinearVelocity, OutbProvidedAngularVelocity, OutAngularVelocityAsAxisAndLength, OutbProvidedLinearAcceleration, OutLinearAcceleration, WorldToMetersScale);
 	}
@@ -461,11 +472,11 @@ ETrackingStatus FPICOOpenXRHandInteraction::GetControllerTrackingStatus(const in
 			return ETrackingStatus::NotTracked;
 		}
 	}
-	else if (MotionSource == "Left")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Left")
 	{
 		return GetControllerTrackingStatus(ControllerIndex, "LeftGrip");
 	}
-	else if (MotionSource == "Right")
+	else if (bSupportHandInteractionLeftRight && MotionSource == "Right")
 	{
 		return GetControllerTrackingStatus(ControllerIndex, "RightGrip");
 	}

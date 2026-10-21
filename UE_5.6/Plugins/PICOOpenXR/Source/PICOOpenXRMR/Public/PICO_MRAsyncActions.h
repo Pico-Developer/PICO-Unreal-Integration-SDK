@@ -1,6 +1,6 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -33,8 +33,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICOLaunchSceneCaptureAppActionResu
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSpatialMeshActionSuccess,EResultPICO, Result, const TArray<FSpatialMeshInfoPICO>&, MeshInfos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSpatialMeshActionFailure,EResultPICO, Result);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSpatialPlaneActionSuccess,EResultPICO, Result, const TArray<FSpatialPlaneInfoPICO>&, PlaneInfos);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSpatialPlaneActionFailure,EResultPICO, Result);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPICORequestSceneCapturesActionSuccess,EResultPICO, Result, const TArray<FMRSceneInfoPICO>&, SceneInfos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestSceneCapturesActionFailure,EResultPICO, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPICORequestLightEstimationActionSuccess,EResultPICO, Result,const ULightEstimationTexturePICO*, LightEstimationTexture,const float,SourceCubemapAngle);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPICORequestLightEstimationActionFailure,EResultPICO, Result);
 
 //////////////////////////////////////////////////////////////////////////
 /// Spatial Anchor
@@ -287,6 +293,65 @@ private:
 	void HandleRequestSpatialMeshComplete(const XrFutureEXT& FutureHandle);
 };
 //////////////////////////////////////////////////////////////////////////
+/// Spatial Plane
+//////////////////////////////////////////////////////////////////////////
+/* UAsyncTask_LaunchMRPlane
+ *****************************************************************************/
+UCLASS()
+class PICOOPENXRMR_API ULaunchSpatialPlaneScanningPICO_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	/// <summary>
+	/// Launches Spatial Plane scanning.
+	/// </summary>
+	/// <returns>
+	/// Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static ULaunchSpatialPlaneScanningPICO_AsyncAction* LaunchSpatialPlaneScanningPICO_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionResult OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionResult OnFailure;
+
+private:
+	void HandleLaunchPlaneScanningComplete(const XrFutureEXT& FutureHandle);
+};
+
+/* UAsyncTask_RequestSpatialPlane
+ *****************************************************************************/
+UCLASS()
+class PICOOPENXRMR_API URequestSpatialPlanePICO_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	/// <summary>
+	/// Requests Spatial Plane Infos.
+	/// </summary>
+	/// <returns>
+	/// - Result: Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// - PlaneInfos:An array of SpatialPlaneInfo, contains Plane UUID, pose, vertices, indices and so on.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static URequestSpatialPlanePICO_AsyncAction* RequestSpatialPlaneInfosPICO_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestSpatialPlaneActionSuccess OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestSpatialPlaneActionFailure OnFailure;
+
+private:
+	void HandleRequestSpatialPlaneComplete(const XrFutureEXT& FutureHandle);
+};
+//////////////////////////////////////////////////////////////////////////
 /// Scene Capture
 //////////////////////////////////////////////////////////////////////////
 /* UAsyncTask_LaunchSceneCaptureService
@@ -374,4 +439,69 @@ public:
 
 private:
 	void HandleRequestSpatialSceneComplete(const XrFutureEXT& FutureHandle);
+};
+
+//////////////////////////////////////////////////////////////////////////
+/// Light Estimatione
+//////////////////////////////////////////////////////////////////////////
+/* UAsyncTask_LaunchSceneCaptureService
+ *****************************************************************************/
+UCLASS()
+class PICOOPENXRMR_API ULaunchLightEstimationServicePICO_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	/// <summary>
+	/// Launches SceneCapture service.
+	/// </summary>
+	/// <returns>
+	/// Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static ULaunchLightEstimationServicePICO_AsyncAction* LaunchLightEstimationServicePICO_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionResult OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICOStartProviderActionResult OnFailure;
+
+private:
+	void HandleLaunchLightEstimationServiceComplete(const XrFutureEXT& FutureHandle);
+};
+
+/* UAsyncTask_RequestLightEstimationInfo
+ *****************************************************************************/
+UCLASS()
+class PICOOPENXRMR_API URequestLightEstimationPICO_AsyncAction : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+	/// <summary>
+	/// Request SceneCaptures.
+	/// </summary>
+	/// <returns>
+	/// - Result: Returns `0` for success and other values for failure. For failure reasons, refer to the EPICOResult enum. Currently, the returned error message result is unique, and you temporarily can not identify the error causes only in the result.
+	/// - SceneloadInfos: An array of SceneInfo, contains UUID, pose, Semantic, SceneType and so on.
+	/// </returns>	
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static URequestLightEstimationPICO_AsyncAction* RequestLightEstimationPICO_Async();
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestLightEstimationActionSuccess OnSuccess;
+
+	UPROPERTY(BlueprintAssignable)
+	FPICORequestLightEstimationActionFailure OnFailure;
+
+private:
+	/** The cube map of the reflected environment */
+	UPROPERTY()
+	ULightEstimationTexturePICO* EnvironmentCaptureTexture;
+
+	float SourceCubemapAngle;
+
+	void HandleRequestLightEstimationComplete(const XrFutureEXT& FutureHandle);
 };

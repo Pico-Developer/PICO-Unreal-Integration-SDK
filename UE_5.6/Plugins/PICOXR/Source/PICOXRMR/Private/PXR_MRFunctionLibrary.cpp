@@ -241,6 +241,16 @@ EPICOMRState UPICOXRMRFunctionLibrary::PXR_GetSceneCaptureServiceState()
 	return PXR_SceneProvider::GetInstance()->GetSenseDataProviderState();
 }
 
+EPICOMRState UPICOXRMRFunctionLibrary::PXR_GetSpatialPlaneScanningState()
+{
+	return PXR_PlaneProvider::GetInstance()->GetSenseDataProviderState();
+}
+
+EPICOMRState UPICOXRMRFunctionLibrary::PXR_GetLightEstimationServiceState()
+{
+	return PXR_LightEstimationProvider::GetInstance()->GetSenseDataProviderState();
+}
+
 void UPICOXRMRFunctionLibrary::PXR_ResetSpatialMeshInfosState()
 {
 	PXR_MeshProvider::GetInstance()->ClearMeshProviderBuffer();
@@ -256,6 +266,15 @@ bool UPICOXRMRFunctionLibrary::PXR_CloseSceneCaptureService()
 	return FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType::Pico_Provider_Scene_Capture);
 }
 
+bool UPICOXRMRFunctionLibrary::PXR_CloseSpatialPlaneScanning()
+{
+	return FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType::Pico_Provider_Plane);
+}
+
+bool UPICOXRMRFunctionLibrary::PXR_CloseLightEstimationService()
+{
+	return FPICOProviderManager::PXR_StopSenseDataProvider(EPICOProviderType::Pico_Provider_Light_Estimation);
+}
 
 bool UPICOXRMRFunctionLibrary::PXR_DestroyAnchorByComponent(UPICOAnchorComponent* AnchorComponent,EPICOResult& OutResult)
 {

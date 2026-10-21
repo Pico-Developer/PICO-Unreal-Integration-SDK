@@ -1,31 +1,20 @@
-// Copyright® 2015-2023 PICO Technology Co., Ltd. All rights reserved.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
 // This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
-// Unreal® Engine, Copyright 1998 – 2023, Epic Games, Inc. All rights reserved. 
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PICO_MRAsyncActions.h"
 
 #include "PICOOpenXRRuntimeSettings.h"
+#include "PICO_LightEstimation.h"
 #include "PICO_MR.h"
 #include "PICO_SceneCapture.h"
 #include "PICO_SpatialAnchor.h"
 #include "PICO_SpatialMesh.h"
+#include "PICO_SpatialPlane.h"
 #include "Async/Async.h"
 #include "Engine/World.h"
+#include "Engine/TextureRenderTargetCube.h"
 
-void URequestSpatialMeshPICO_AsyncAction::Activate()
-{
-	EResultPICO Result = EResultPICO::XR_Error_Unknown_PICO;
-
-	const bool bStarted = FSpatialMeshExtensionPICO::GetInstance()->RequestSpatialTriangleMesh
-	(
-		FPICOPollFutureDelegate::CreateUObject(this, &URequestSpatialMeshPICO_AsyncAction::HandleRequestSpatialMeshComplete),Result
-	);
-
-	if (!bStarted)
-	{
-		OnFailure.Broadcast(Result);
-	}
-}
 void URequestSceneCapturesPICO_AsyncAction::Activate()
 {
 	EResultPICO OutResult = EResultPICO::XR_Error_RuntimeFailure;
@@ -68,6 +57,22 @@ void URequestSceneCapturesPICO_AsyncAction::HandleRequestSpatialSceneComplete(co
 	SetReadyToDestroy();
 }
 
+
+void URequestSpatialMeshPICO_AsyncAction::Activate()
+{
+	EResultPICO Result = EResultPICO::XR_Error_Unknown_PICO;
+
+	const bool bStarted = FSpatialMeshExtensionPICO::GetInstance()->RequestSpatialTriangleMesh
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &URequestSpatialMeshPICO_AsyncAction::HandleRequestSpatialMeshComplete),Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
 URequestSpatialMeshPICO_AsyncAction* URequestSpatialMeshPICO_AsyncAction::RequestSpatialMeshInfosPICO_Async()
 {
 	URequestSpatialMeshPICO_AsyncAction* Action = NewObject<URequestSpatialMeshPICO_AsyncAction>();
@@ -78,7 +83,7 @@ URequestSpatialMeshPICO_AsyncAction* URequestSpatialMeshPICO_AsyncAction::Reques
 
 void URequestSpatialMeshPICO_AsyncAction::HandleRequestSpatialMeshComplete(const XrFutureEXT& FutureHandle)
 {
-	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [FutureHandle,this]()
+	AsyncTask(ENamedThreads::GameThread, [FutureHandle,this]()
 	{
 		TArray<FSpatialMeshInfoPICO> MeshInfos;
 		TSet<FSpatialUUIDPICO> NeedDeleteEntitySet;
@@ -164,6 +169,110 @@ void ULaunchSpatialMeshScanningPICO_AsyncAction::HandleLaunchMeshScanningComplet
 	}
 	
 	SetReadyToDestroy();
+}
+
+URequestSpatialPlanePICO_AsyncAction* URequestSpatialPlanePICO_AsyncAction::RequestSpatialPlaneInfosPICO_Async()
+{
+	URequestSpatialPlanePICO_AsyncAction* Action = NewObject<URequestSpatialPlanePICO_AsyncAction>();
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void URequestSpatialPlanePICO_AsyncAction::HandleRequestSpatialPlaneComplete(const XrFutureEXT& FutureHandle)
+{
+	AsyncTask(ENamedThreads::GameThread, [FutureHandle,this]()
+	{
+		TArray<FSpatialPlaneInfoPICO> PlaneInfos;
+		TSet<FSpatialUUIDPICO> NeedDeleteEntitySet;
+		EResultPICO OutResult = EResultPICO::XR_Error_Unknown_PICO;
+		if (FSpatialPlaneExtensionPICO::GetInstance()->GetSpatialTrianglePlaneInfos(FutureHandle,PlaneInfos, OutResult))
+		{
+			OnSuccess.Broadcast(OutResult, PlaneInfos);
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+		SetReadyToDestroy();
+	});
+}
+
+void ULaunchSpatialPlaneScanningPICO_AsyncAction::Activate()
+{
+	if(!FSpatialPlaneExtensionPICO::GetInstance()->IsHandleValid())
+	{
+		const UPICOOpenXRRuntimeSettings* Settings = GetDefault<UPICOOpenXRRuntimeSettings>();
+
+		if (Settings->bEnablePlane)
+		{
+			FSenseDataProviderCreateInfoPlanePICO cFPICOSenseDataProviderCreateInfoPlane = {};
+			
+			EResultPICO OutResult=EResultPICO::XR_Error_Unknown_PICO;
+			FSpatialPlaneExtensionPICO::GetInstance()->CreateProvider(cFPICOSenseDataProviderCreateInfoPlane,OutResult);
+		}
+	}
+	
+	EResultPICO Result=EResultPICO::XR_Error_Unknown_PICO;
+	const bool bStarted = FSpatialPlaneExtensionPICO::GetInstance()->StartProvider
+	(
+		FPICOPollFutureDelegate::CreateUObject(this,
+		&ULaunchSpatialPlaneScanningPICO_AsyncAction::HandleLaunchPlaneScanningComplete)
+		,Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+ULaunchSpatialPlaneScanningPICO_AsyncAction* ULaunchSpatialPlaneScanningPICO_AsyncAction::LaunchSpatialPlaneScanningPICO_Async()
+{
+	ULaunchSpatialPlaneScanningPICO_AsyncAction* Action = NewObject<ULaunchSpatialPlaneScanningPICO_AsyncAction>();
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void ULaunchSpatialPlaneScanningPICO_AsyncAction::HandleLaunchPlaneScanningComplete(const XrFutureEXT& FutureHandle)
+{
+	FSenseDataProviderStartCompletionPICO SenseDataProviderStartCompletion;
+	EResultPICO OutResult = EResultPICO::XR_Error_Unknown_PICO;
+
+	if (FSpatialSensingExtensionPICO::GetInstance()->StartSenseDataProviderComplete(FutureHandle, SenseDataProviderStartCompletion,OutResult))
+	{
+		if (PXR_SUCCESS(SenseDataProviderStartCompletion.FutureResult))
+		{
+			OnSuccess.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+		else
+		{
+			OnFailure.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+	
+	SetReadyToDestroy();
+}
+
+void URequestSpatialPlanePICO_AsyncAction::Activate()
+{
+	EResultPICO Result = EResultPICO::XR_Error_Unknown_PICO;
+
+	const bool bStarted = FSpatialPlaneExtensionPICO::GetInstance()->RequestSpatialTrianglePlane
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &URequestSpatialPlanePICO_AsyncAction::HandleRequestSpatialPlaneComplete),Result
+	);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
 }
 
 void ULaunchSpatialAnchorServicePICO_AsyncAction::Activate()
@@ -715,4 +824,122 @@ void URequestSpatialAnchorsPICO_AsyncAction::HandleDownloadSharedAnchorsComplete
 	}
 
 	SetReadyToDestroy();
+}
+
+void ULaunchLightEstimationServicePICO_AsyncAction::Activate()
+{
+	Super::Activate();
+	if(!FLightEstimationExtensionPICO::GetInstance()->IsHandleValid())
+	{
+		const UPICOOpenXRRuntimeSettings* Settings = GetDefault<UPICOOpenXRRuntimeSettings>();
+		UE_LOG(LogMRPICO,Log,TEXT("ULaunchLightEstimationService bEnableLightEstimation:%d"),Settings->bEnableLightEstimation);
+
+		if (Settings->bEnableLightEstimation)
+		{
+			FSenseDataProviderCreateInfoLightEstimationPICO CreateInfoLightEstimation = {};
+			CreateInfoLightEstimation.Resolution=Settings->LightEstimationResolution;
+			EResultPICO OutResult=EResultPICO::XR_Error_Unknown_PICO;
+			FLightEstimationExtensionPICO::GetInstance()->CreateProvider(CreateInfoLightEstimation,OutResult);
+		}
+	}
+	
+	EResultPICO Result=EResultPICO::XR_Error_Unknown_PICO;
+
+	const bool bStarted = FLightEstimationExtensionPICO::GetInstance()->StartProvider(
+		FPICOPollFutureDelegate::CreateUObject(this,
+		&ULaunchLightEstimationServicePICO_AsyncAction::HandleLaunchLightEstimationServiceComplete)
+		, Result);
+
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(Result);
+	}
+}
+
+ULaunchLightEstimationServicePICO_AsyncAction* ULaunchLightEstimationServicePICO_AsyncAction::LaunchLightEstimationServicePICO_Async()
+{
+	ULaunchLightEstimationServicePICO_AsyncAction* Action = NewObject<ULaunchLightEstimationServicePICO_AsyncAction>();
+
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void ULaunchLightEstimationServicePICO_AsyncAction::HandleLaunchLightEstimationServiceComplete(
+	const XrFutureEXT& FutureHandle)
+{
+	FSenseDataProviderStartCompletionPICO SenseDataProviderStartCompletion;
+	EResultPICO OutResult = EResultPICO::XR_Error_Unknown_PICO;
+
+	if (FSpatialSensingExtensionPICO::GetInstance()->StartSenseDataProviderComplete(FutureHandle, SenseDataProviderStartCompletion,OutResult))
+	{
+		if (PXR_SUCCESS(SenseDataProviderStartCompletion.FutureResult))
+		{
+			OnSuccess.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+		else
+		{
+			OnFailure.Broadcast(SenseDataProviderStartCompletion.FutureResult);
+		}
+	}
+	else
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+
+	SetReadyToDestroy();
+}
+
+void URequestLightEstimationPICO_AsyncAction::Activate()
+{
+	EResultPICO OutResult = EResultPICO::XR_Error_RuntimeFailure;
+
+	FIntPoint Size=FLightEstimationExtensionPICO::GetInstance()->GetLightEstimationSize();
+	
+	EnvironmentCaptureTexture = NewObject<ULightEstimationTexturePICO>(this);
+
+	const bool bStarted = FLightEstimationExtensionPICO::GetInstance()->RequestLightEstimation
+	(
+		FPICOPollFutureDelegate::CreateUObject(this, &URequestLightEstimationPICO_AsyncAction::HandleRequestLightEstimationComplete),
+		OutResult
+	);
+	
+	if (!bStarted)
+	{
+		OnFailure.Broadcast(OutResult);
+	}
+}
+
+URequestLightEstimationPICO_AsyncAction* URequestLightEstimationPICO_AsyncAction::RequestLightEstimationPICO_Async()
+{
+	URequestLightEstimationPICO_AsyncAction* Action = NewObject<URequestLightEstimationPICO_AsyncAction>();
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void URequestLightEstimationPICO_AsyncAction::HandleRequestLightEstimationComplete(const XrFutureEXT& FutureHandle)
+{
+	AsyncTask(ENamedThreads::GameThread, [FutureHandle,this]()
+	{
+		EResultPICO OutResult = EResultPICO::XR_Error_Unknown_PICO;
+		if (FLightEstimationExtensionPICO::GetInstance()->GetLightEstimationInfo(FutureHandle,EnvironmentCaptureTexture,SourceCubemapAngle,OutResult))
+		{
+			// Create the texture
+			if (EnvironmentCaptureTexture)
+			{
+				OnSuccess.Broadcast(OutResult,EnvironmentCaptureTexture,SourceCubemapAngle);
+			}
+			else
+			{
+				OnFailure.Broadcast(OutResult);
+			}
+		}
+		else
+		{
+			OnFailure.Broadcast(OutResult);
+		}
+	
+		SetReadyToDestroy();
+	});
 }

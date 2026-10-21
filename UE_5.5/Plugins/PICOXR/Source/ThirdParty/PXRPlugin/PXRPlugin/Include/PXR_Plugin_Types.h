@@ -363,7 +363,30 @@ typedef enum
     PXR_TYPE_SPATIAL_ENTITY_BOUNDING_BOX_3D_COMPONENT_INFO = 271,
     PXR_TYPE_SENSE_UNPERSIST_ANCHOR_BY_UUID_COMPLETION = 272,
     PXR_TYPE_EVENT_DATA_SPATIAL_MAP_MEM_LIMITED = 273,
+	PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_FILTER = 274,
+    PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_GET_INFO = 275,
+    PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_INFO = 276,
 
+	/*
+	* mr sdk 3.0 environment depth
+	*/
+	PXR_TYPE_ENVIRONMENT_DEPTH_PROVIDER_CREATE_INFO_META = 284,
+	PXR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_CREATE_INFO_META = 285,
+	PXR_TYPE_ENVIRONMENT_DEPTH_SWAPCHAIN_STATE_META = 286,
+	PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_ACQUIRE_INFO_META = 287,
+	PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_VIEW_META = 288,
+	PXR_TYPE_ENVIRONMENT_DEPTH_IMAGE_META = 289,
+	PXR_TYPE_ENVIRONMENT_DEPTH_HAND_REMOVAL_SET_INFO_META = 290,
+    /*
+     * mr sdk 3.0 light estimation
+     */
+    PXR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_GLES = 277,
+    PXR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_RAW = 278,
+    PXR_TYPE_LIGHT_ESTIMATION_INFO_SPHERICAL_HARMONICS = 279,
+    PXR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_VULKAN = 280,
+    PXR_TYPE_LIGHT_ESTIMATION_PROVIDER_CREATE_INFO = 281,
+    PXR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_GET_INFO = 282,
+    PXR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_INFO = 283,
     /*
      * future ext
      */
@@ -833,6 +856,8 @@ typedef enum PxrSpatialEntityComponentType{
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_TRIANGLE_MESH = 5,
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_AUTO_SCENE_CAPTURE_RESULT = 1000,
     PXR_SPATIAL_ENTITY_COMPONENT_TYPE_SEMI_AUTO_SCENE_CAPTURE_RESULT = 1001,
+	PXR_SPATIAL_ENTITY_COMPONENT_TYPE_PLANE_ORIENTATION = 1010027000,
+	PXR_SPATIAL_ENTITY_COMPONENT_TYPE_LIGHT_ESTIMATION = 1010028000,
 } PxrSpatialEntityComponentType;
 
 typedef enum PxrSemiAutoRoomCaptureCandidateType {
@@ -2845,25 +2870,6 @@ typedef struct PxrEventSemiAutoRoomCaptureCandidatesUpdated {
     uint32_t                    count;
 } PxrEventSemiAutoRoomCaptureCandidatesUpdated ;
 
-
-
-//typedef struct PxrSemiAutoRoomCaptureCandidate {
-//    float                       x;
-//    float                       y;
-//    float                       z;
-//    float                       confidenceLevel;
-//    float                       candidateID;
-//    PxrRoomCaptureCandidateType type;
-//} PxrSemiAutoRoomCaptureCandidate;
-
-
-//typedef struct PxrSemiAutoRoomCaptureCandidateResults {
-//    PxrSemiAutoRoomCaptureCandidate*    candidates;
-//    int                                 candidates_num;
-//}PxrSemiAutoRoomCaptureCandidateResults ;
-
-
-
 /*
  *  scene capture sdk3.0
  */
@@ -3110,6 +3116,27 @@ typedef struct PxrSpatialEntitySemanticFilter{
     PxrSemanticLabel*          semantics;
 } PxrSpatialEntitySemanticFilter;
 
+typedef enum PxrPlaneOrientation{
+    PXR_PLANE_ORIENTATION_HORIZONTAL_UPWARD = 0,
+    PXR_PLANE_ORIENTATION_HORIZONTAL_DOWNWARD= 1,
+    PXR_PLANE_ORIENTATION_VERTICAL = 2,
+    PXR_PLANE_ORIENTATION_ARBITRARY = 3,
+} PxrPlaneOrientation;
+
+typedef struct PxrSpatialEntityPlaneOrientationFilter{
+    PxrStructureType            type;//PXR_TYPE_SPATIAL_ENTITY_PLANE_ORIENTATION_FILTER
+    uint32_t                    orientationCount;
+    PxrPlaneOrientation*        orientations;
+} PxrSpatialEntityPlaneOrientationFilter;
+
+typedef struct PxrSpatialPlaneProviderCreateInfo{
+    PxrStructureType          type; //PXR_TYPE_PLANE_DETECTION_PROVIDER_CREATE_INFO
+} PxrSpatialPlaneProviderCreateInfo;
+
+typedef struct PxrSpatialLightEstimationProviderCreateInfo{
+	PxrStructureType          type; //PXR_TYPE_LIGHT_ESTIMATION_PROVIDER_CREATE_INFO
+} PxrSpatialLightEstimationProviderCreateInfo;
+
 typedef struct PxrSenseDataQueryFilterBaseHeader{
     PxrStructureType             type;
     uint8_t                      vary[128];
@@ -3309,6 +3336,124 @@ typedef struct PxrSpatialEntityTriangleMeshInfo{
     uint16_t*             indices;
 } PxrSpatialEntityTriangleMeshInfo;
 
+// Plane Orientation
+typedef struct PxrSpatialEntityPlaneOrientationGetInfo{
+    PxrStructureType                   type;
+    uint64_t                           entity;
+    PxrSpatialEntityComponentType    componentType;
+} PxrSpatialEntityPlaneOrientationGetInfo;
+
+typedef struct PxrSpatialEntityPlaneOrientationInfo{
+    PxrStructureType         type;
+    PxrPlaneOrientation      planeOrientation;
+} PxrSpatialEntityPlaneOrientationInfo;
+
+/*
+ * mr sdk 3.0 light estimation
+ */
+
+typedef enum PxrEnvironmentTextureResolution {
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_8_8 = 0,
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_16_16 = 1,
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_32_32 = 2,
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_64_64 = 3,
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_128_128 = 4,
+    PXR_ENVIRONMENT_TEXTURE_RESOLUTION_MAX_ENUM = 0x7FFFFFFF
+} PxrEnvironmentTextureResolution;
+
+typedef enum PxrEnvironmentTextureTransferType {
+    PXR_ENVIRONMENT_TEXTURE_TRANSFER_TYPE_RAW = 0,
+    PXR_ENVIRONMENT_TEXTURE_TRANSFER_TYPE_GLES = 1,
+    PXR_ENVIRONMENT_TEXTURE_TRANSFER_TYPE_VULKAN = 2,
+    PXR_ENVIRONMENT_TEXTURE_TRANSFER_TYPE_MAX_ENUM = 0x7FFFFFFF
+} PxrEnvironmentTextureTransferType;
+
+typedef enum PxrEnvironmentTexturePixelFormat {
+    PXR_ENVIRONMENT_TEXTURE_PIXEL_FORMAT_RGB_16FLOAT  = 0,
+    PXR_ENVIRONMENT_TEXTURE_PIXEL_FORMAT_RGBA_16FLOAT  = 1,
+    PXR_ENVIRONMENT_TEXTURE_PIXEL_FORMAT_MAX_ENUM = 0x7FFFFFFF,
+} PxrEnvironmentTexturePixelFormat;
+
+
+typedef uint64_t PxrLightEstimationCreateFlags;
+static const PxrLightEstimationCreateFlags PXR_LIGHT_ESTIMATION_CREATE_SPHERICAL_HARMONICS_BIT = 0x00000001;
+static const PxrLightEstimationCreateFlags PXR_LIGHT_ESTIMATION_CREATE_ENVIRONMENT_TEXTURE_BIT = 0x00000002;
+
+typedef struct PxrLightEstimationCreateInfo {
+    PxrStructureType                                            type;        // PXR_TYPE_LIGHT_ESTIMATION
+    PxrLightEstimationCreateFlags                               createFlags;
+    PxrEnvironmentTexturePixelFormat                            pixelFormat;
+    PxrEnvironmentTextureResolution                             resolution;
+    PxrEnvironmentTextureTransferType                           transferType;
+    uint32_t                                                    vkCreateFlags; // VkImageCreateFlags
+    uint32_t                                                        vkUsageFlags;  // VkImageUsageFlags
+} PxrLightEstimationCreateInfo;
+
+typedef struct PxrSpatialEntityLightEstimationGetInfoPICO {
+    PxrStructureType                     type;           // PXR_TYPE_SPATIAL_ENTITY_LIGHT_ESTIMATION_GET_INFO_PICO
+    uint64_t                            entity;         // Unique identifier of the spatial entity
+    PxrSpatialEntityComponentType       componentType;  // Spatial entity component type
+} PxrSpatialEntityLightEstimationGetInfoPICO;
+
+typedef enum PxrLightEstimationDataState {
+    PXR_LIGHT_ESTIMATION_DATA_STATE_VALID = 0,
+    PXR_LIGHT_ESTIMATION_DATA_STATE_INVALID = 1,
+    PXR_LIGHT_ESTIMATION_DATA_STATE_MAX_ENUM = 0x7FFFFFFF,
+} PxrLightEstimationDataState;
+
+typedef struct PxrLightEstimationInfoEnvironmentTextureGles {
+    PxrStructureType             type;  // PXR_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_GLES
+    uint32_t                     cubeTexture;
+} PxrLightEstimationInfoEnvironmentTextureGles;
+
+typedef struct PxrLightEstimationInfoEnvironmentTextureVulkan {
+    PxrStructureType             type;        // PXR_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_VULKAN
+    uint32_t                     arrayLayers; // Number of array layers of the image (e.g., 6 for a cubemap, 1 for a 2D texture)
+    uint64_t                     image;       // Handle of the Vulkan image object (VkImage)
+    int                          mipLevels;
+    int                          format;
+} PxrLightEstimationInfoEnvironmentTextureVulkan;
+
+typedef struct PxrLightEstimationInfoEnvironmentTextureRaw {
+    PxrStructureType                       type;        // PXR_TYPE_LIGHT_ESTIMATION_INFO_ENVIRONMENT_TEXTURE_RAW
+    PxrEnvironmentTexturePixelFormat       pixelFormat;
+    uint32_t                               bufferLen;
+    uint8_t*                               cubemapRightImage;
+    uint8_t*                               cubemapLeftImage;
+    uint8_t*                               cubemapTopImage;
+    uint8_t*                               cubemapBottomImage;
+    uint8_t*                               cubemapFrontImage;
+    uint8_t*                               cubemapBackImage;
+} PxrLightEstimationInfoEnvironmentTextureRaw;
+
+typedef enum PxrSphericalHarmonicsKind {
+    PXR_SPHERICAL_HARMONICS_KIND_TOTAL_PICO = 0,
+    PXR_SPHERICAL_HARMONICS_KIND_MAX_ENUM_PICO = 0x7FFFFFFF
+} PxrSphericalHarmonicsKind;
+
+typedef struct PxrLightEstimationInfoSphericalHarmonics {
+    PxrStructureType                type;   // PXR_LIGHT_ESTIMATION_INFO_SPHERICAL_HARMONICS
+    PxrSphericalHarmonicsKind       kind;
+    uint32_t                        coeCapacityInput;
+    uint32_t                        coeCountOutput;
+    float*                          coefficients;
+} PxrLightEstimationInfoSphericalHarmonics;
+
+typedef struct PxrLightEstimationInfoBaseHeader {
+    PxrStructureType type;
+} PxrLightEstimationInfoBaseHeader;
+
+typedef struct PxrSpatialEntityLightEstimationInfo {
+    PxrStructureType type;                   // PXR_SPATIAL_ENTITY_LIGHT_ESTIMATION_INFO
+    PxrLightEstimationDataState state;
+    PxrLightEstimationInfoBaseHeader  *harmonics;
+    PxrLightEstimationInfoBaseHeader  *texture;  // nullptr for not required
+} PxrSpatialEntityLightEstimationInfo;
+
+/*
+ * mr sdk 3.0 light estimation end
+ */
+
 typedef struct PxrEventDataSenseDataProviderStateChanged{
     PxrStructureType              type;//PXR_TYPE_EVENT_DATA_SENSE_DATA_PROVIDER_STATE_CHANGED
     uint64_t                      provider; //provider handle
@@ -3459,5 +3604,62 @@ typedef struct PxrEventDataSpatialMapMemLimited{
     PxrEventLevel eventLevel;
     PxrSpatialMapMemLimitedReason reason;
 }PxrEventDataSpatialMapMemLimited;
+
+/*
+ * mr sdk 3.0 environment depth
+ */
+typedef uint64_t PxrEnvironmentDepthProviderCreateFlags;
+typedef uint64_t PxrEnvironmentDepthSwapchainCreateFlags;
+
+typedef struct PxrFovf {
+	float    angleLeft;
+	float    angleRight;
+	float    angleUp;
+	float    angleDown;
+} PxrFovf;
+
+typedef struct PxrEnvironmentDepthProviderCreateInfo {
+	PxrStructureType                              type;
+	PxrEnvironmentDepthProviderCreateFlags        createFlags;
+} PxrEnvironmentDepthProviderCreateInfo;
+
+typedef struct PxrEnvironmentDepthSwapchainCreateInfo {
+	PxrStructureType                               type;
+	PxrEnvironmentDepthSwapchainCreateFlags        createFlags;
+} PxrEnvironmentDepthSwapchainCreateInfo;
+
+typedef struct PxrEnvironmentDepthSwapchainState {
+	PxrStructureType       type;
+	uint32_t               width;
+	uint32_t               height;
+} PxrEnvironmentDepthSwapchainState;
+
+typedef struct PxrEnvironmentDepthImageAcquireInfo {
+	PxrStructureType             type;
+	uint64_t                     space;
+	uint64_t                     displayTime;
+} PxrEnvironmentDepthImageAcquireInfo;
+
+typedef struct PxrEnvironmentDepthImageView {
+	PxrStructureType             type;
+	PxrFovf                      fov;
+	PxrPosef                     pose;
+} PxrEnvironmentDepthImageView;
+
+typedef struct PxrEnvironmentDepthImage {
+	PxrStructureType                    type;
+	uint32_t                           swapchainIndex;
+	float                              nearZ;
+	float                              farZ;
+	PxrEnvironmentDepthImageView       views[2];
+} PxrEnvironmentDepthImage;
+
+typedef struct PxrEnvironmentDepthHandRemovalSetInfo {
+	PxrStructureType             type;
+	bool                         enabled;
+} PxrEnvironmentDepthHandRemovalSetInfo;
+/*
+ * mr sdk 3.0 environment depth end
+ */
 
 #endif  // PXR_TYPES_H

@@ -6,3 +6,4 @@
 #include "PXR_Shaders.h"
 
 IMPLEMENT_SHADER_TYPE(, FPICOCubemapPS, TEXT("/Plugin/PICOXR/Private/PICOShaders.usf"), TEXT("MainForCubemap"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(, FPICOLightCubemapPS, TEXT("/Plugin/PICOXR/Private/PICOShaders.usf"), TEXT("MainForLightCubemap"), SF_Pixel);

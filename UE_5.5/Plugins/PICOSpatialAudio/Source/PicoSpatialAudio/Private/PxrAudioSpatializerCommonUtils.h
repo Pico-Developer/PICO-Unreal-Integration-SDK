@@ -19,8 +19,8 @@ namespace Pxr_Audio
 		                                          float* CartesianPicoCoordinate);
 		void ConvertToPicoSpatialAudioCoordinates(const FTransform& TransformUnrealCoordinate,
 		                                          float TransformPicoCoordinate[16]);
-		PxrAudioSpatializer_RenderingMode ConvertToInternalRenderingMode(
-			EPxrAudioSpatializer_RenderingMode RenderingModeUe);
+		PxrAudioSpatializer_RenderingQuality ConvertToInternalRenderingMode(
+			EPxrAudioSpatializer_RenderingQuality RenderingModeUe);
 		void InterleavedToPlannerBuffer(const Audio::AlignedFloatBuffer& InterleavedBuffer,
 		                                TArray<Audio::AlignedFloatBuffer>& PlannerBuffers);
 

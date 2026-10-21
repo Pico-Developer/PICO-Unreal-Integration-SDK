@@ -8,14 +8,13 @@ namespace UnrealBuildTool.Rules
 				: base(Target)
         {
             PublicDependencyModuleNames.Add("InputDevice");
-
+            PublicDependencyModuleNames.Add("HeadMountedDisplay");
             PrivateDependencyModuleNames.AddRange(
                 new string[]
                 {
                     "Core",
                     "CoreUObject",
                     "Engine",
-					"HeadMountedDisplay",
 					"XRBase",
                     "InputCore",
 					"LiveLinkAnimationCore",

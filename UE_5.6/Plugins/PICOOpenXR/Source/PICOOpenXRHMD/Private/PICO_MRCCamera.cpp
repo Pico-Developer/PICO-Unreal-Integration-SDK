@@ -16,13 +16,13 @@ AMRCCameraPICO::AMRCCameraPICO(const FObjectInitializer& ObjectInitializer)
 	, Fov(0.0f)
 	, FlipFlop(true)
 {
-	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> BGRef(TEXT("/Script/Engine.TextureRenderTarget2D'/PICOOpenXR/PICOOpenXR/Textures/RT_BG.RT_BG'"));
+	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> BGRef(TEXT("/Script/Engine.TextureRenderTarget2D'/PICOOpenXR/Textures/RT_BG.RT_BG'"));
 	BackgroundRT = BGRef.Object;
 	check(BackgroundRT != nullptr);
 	BackgroundRT->RenderTargetFormat = RTF_RGBA8_SRGB;
 	BackgroundRT->bAutoGenerateMips = false;
 
-	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> FGRef(TEXT("/Script/Engine.TextureRenderTarget2D'/PICOOpenXR/PICOOpenXR/Textures/RT_FG.RT_FG'"));
+	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> FGRef(TEXT("/Script/Engine.TextureRenderTarget2D'/PICOOpenXR/Textures/RT_FG.RT_FG'"));
 	ForegroundRT = FGRef.Object;
 	check(ForegroundRT != nullptr);
 	ForegroundRT->RenderTargetFormat = RTF_RGBA8_SRGB;

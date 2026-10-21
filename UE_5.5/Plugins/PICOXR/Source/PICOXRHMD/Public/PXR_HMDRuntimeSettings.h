@@ -45,6 +45,16 @@ enum class EPICOXRHandTrackingSupport : uint8
 	HandsOnly,
 };
 
+UENUM(BlueprintType, meta = (Categories = "PICO|MR"))
+enum class EPICOXRSpatialLightEstimationResolution:uint8
+{
+	TextureResolution_8x8 = 0 UMETA(DisplayName = "8x8"),
+	TextureResolution_16x16 = 1 UMETA(DisplayName = "16x16"),
+	TextureResolution_32x32 = 2 UMETA(DisplayName = "32x32"),
+	TextureResolution_64x64 = 3 UMETA(DisplayName = "64x64"),
+	TextureResolution_128x128 = 4 UMETA(DisplayName = "128x128"),
+};
+
 UENUM()
 enum class EPICOXRSharpeningType : uint8
 {
@@ -88,8 +98,8 @@ public:
 	//Sensor
 	UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "Enable PSensor?", ToolTip = "If you want to get PSensor state,Please enable it!"))
 		bool bEnablePSensor;
-
-	UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "HMD Only Tracking Rotation"))
+	// 3Dof is no longer supported
+	//UPROPERTY(Config, EditAnywhere, Category = HMD, Meta = (DisplayName = "HMD Only Tracking Rotation"))
 		bool bIsHMD3Dof;
 
 	//Controller
@@ -164,6 +174,15 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = MixedReality, Meta = (DisplayName = "Enable Scene Capture"))
 		bool bEnableSceneCapture;
+
+	UPROPERTY(config, EditAnywhere, Category = MixedReality, meta = (DisplayName = "Enable Spatial Plane"))
+		bool bEnablePlane;
+
+	UPROPERTY(config, EditAnywhere, Category = MixedReality, meta = (DisplayName = "Enable Light Estimation"))
+		bool bLightEstimation;
+
+	UPROPERTY(Config, EditAnywhere, Category = MixedReality, Meta = (EditCondition = "bLightEstimation", DisplayName = "Light Estimation Resolution"))
+		EPICOXRSpatialLightEstimationResolution LightEstimationResolution;
 	
 	UPROPERTY(Config, EditAnywhere, Category = MixedReality, Meta = (DisplayName = "Enable Spatial Mesh"))
 		bool bEnableMesh;

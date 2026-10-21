@@ -121,6 +121,17 @@ enum class EFtLipsyncCtlVal :uint8
 	START_LIPSYNC,
 };
 
+UENUM()
+enum class EPICOOcclusionsMode : uint8
+{
+	/// Environment depth occlusions disabled.
+	Disabled = 0,
+	/// Hard occlusions, this is deprecated. Use soft occlusions instead.
+	HardOcclusions_Deprecated = 1,
+	/// Soft occlusions, shows soft edges between the real and virtual world.
+	SoftOcclusions = 2,
+};
+
 USTRUCT(BlueprintType)
 struct FPxrSensorState
 {
@@ -264,16 +275,6 @@ public:
 	/// <returns> Quat, the current position of the HMD. </returns>
 	UFUNCTION(BlueprintCallable, Category = "PXR|PXRHMD")
 	static FVector PXR_GetCurrentPosition();
-
-	/// <summary>Checks if the HMD supports positional tracking.</summary>
-	/// <returns>Bool:
-    /// <ul>
-    /// <li>`true`: support positional tracking (6DOF mode enabled)</li>
-    /// <li>`false`: not support positional tracking (3DOF mode enabled)</li>
-    /// </ul>
-    /// </returns>
-	UFUNCTION(BlueprintCallable, Category = "PXR|PXRHMD")
-	static bool PXR_DoesSupportPositionalTracking();
 
 	/// @brief Gets the angular velocity of the headset.
 	/// @return A FVector representing the angular velocity of the headset.
@@ -787,4 +788,18 @@ public:
 	/// <returns> FString. The device name,such as PICO 4. </returns>
 	UFUNCTION(BlueprintPure, Category = "PXR|PXRHMD")
 	static FString PXR_GetDeviceName();
+
+	/// <summary>
+	/// Create the environment depth texture swap chain and start receiving.
+	/// </summary>
+	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
+	static void PXR_LaunchEnvironmentDepth();
+	
+	/// <summary>
+	/// Destroy the environment depth texture swap chain and stop receiving
+	/// new depth textures every frame. Call this when environment depth is
+	/// no longer needed to free up resources..
+	/// </summary>
+	UFUNCTION(BlueprintCallable, Category = "PICO|MR")
+	static void PXR_CloseEnvironmentDepth();
 };

@@ -1,7 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright PICO Technology Co., Ltd. All rights reserved.
+// This plugin incorporates portions of the Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 
 #include "PICO_SpatialMesh.h"
+#include "PICO_MRModule.h"
 #include "IOpenXRHMDModule.h"
 
 #include "IXRTrackingSystem.h"
@@ -12,14 +15,14 @@ FSpatialMeshExtensionPICO::FSpatialMeshExtensionPICO(): CurrentLod(ESpatialMeshL
 {
 }
 
-bool FSpatialMeshExtensionPICO::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+FSpatialMeshExtensionPICO* FSpatialMeshExtensionPICO::GetInstance()
 {
-	if (UPICOOpenXRRuntimeSettings::GetBoolConfigByKey("bEnableMesh"))
-	{
-		OutExtensions.Add(XR_PICO_SPATIAL_MESH_EXTENSION_NAME);
-		return true;
-	}
-	return false;
+	return &FPICOOpenXRMRModule::Get().GetMRModuleExtension().GetSpatialMeshPICO();
+}
+
+void FSpatialMeshExtensionPICO::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
+{
+	OutExtensions.Add(XR_PICO_SPATIAL_MESH_EXTENSION_NAME);
 }
 
 void FSpatialMeshExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId InSystem)
@@ -34,7 +37,7 @@ void FSpatialMeshExtensionPICO::PostGetSystem(XrInstance InInstance, XrSystemId 
 			XrSystemProperties SPSpatialMesh{ XR_TYPE_SYSTEM_PROPERTIES,&SpatialMeshPropertiesPICO };
 			XR_ENSURE(xrGetSystemProperties(InInstance, InSystem, &SPSpatialMesh));
 			bsupportsSpatialMesh = SpatialMeshPropertiesPICO.supportsSpatialMesh == XR_TRUE;
-			UE_LOG(LogMRPICO,Log, TEXT("bsupportsSpatialMesh:%d"), bsupportsSpatialMesh)
+			UE_LOG(LogMRPICO,Verbose, TEXT("bsupportsSpatialMesh:%d"), bsupportsSpatialMesh)
 		}
 	}
 }
@@ -82,6 +85,12 @@ bool FSpatialMeshExtensionPICO::CreateProvider(const FSenseDataProviderCreateInf
 	bool bResult = false;
 	if (bsupportsSpatialMesh)
 	{
+		if (Session == XR_NULL_HANDLE)
+		{
+			OutResult = EResultPICO::XR_Error_ValidationFailure;
+			return false;
+		}
+
 		if (IsHandleValid())
 		{
 			UE_LOG(LogMRPICO, Error, TEXT("CreateProvider failed already create"));
@@ -147,6 +156,7 @@ bool FSpatialMeshExtensionPICO::GetSpatialTriangleMeshInfos(const XrFutureEXT& F
 		MeshInfos.Empty();
 		CurrentUUIDSet.Empty();
 
+		UE_LOG(LogMRPICO, VeryVerbose, TEXT("FSpatialMeshExtensionPICO::GetSpatialTriangleMeshInfos:%d"),QueriedSenseData.QueriedSpatialEntityInfos.Num());
 		int32 CountAfterDiff = 0;
 		for (auto EntityInfo : QueriedSenseData.QueriedSpatialEntityInfos)
 		{

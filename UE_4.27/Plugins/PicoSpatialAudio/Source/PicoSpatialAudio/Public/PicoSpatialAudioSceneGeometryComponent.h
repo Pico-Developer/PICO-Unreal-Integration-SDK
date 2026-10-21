@@ -28,6 +28,12 @@ public:
 
 	int32 SubmitToContext();
 	int32 SubmitBakedMeshToContext();
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	int32 SubmitExternalMeshData(const TArray<FVector>& Vertices, const TArray<int32>& Indices);
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	int32 UpdateExternalMeshData(const TArray<FVector>& Vertices, const TArray<int32>& Indices);
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	int32 UpdateMeshInContext();
 
 	// if IncludeChildrenActor is true, children (attached) meshes will be merged and managed by this component
 	UPROPERTY(EditAnywhere, Category = "Settings")
@@ -35,8 +41,10 @@ public:
 	// if IncludeChildrenActor is true, children (attached) meshes will be merged and managed by this component
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	bool IncludeChildrenComponent = false;
-	UPROPERTY(EditAnywhere, Category = "Settings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	UPicoSpatialAudioSceneMaterialSettings* MaterialSettings;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	bool bUseExternalMesh = false;
 
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Mesh Baking Utilities")
 	void BakeMesh();
@@ -81,4 +89,7 @@ private:
 	                              const FTransform& RootTransform,
 	                              TArray<float>& OutBatchedMeshVerticesBuffer,
 	                              TArray<int32>& OutBatchedMeshIndicesBuffer);
+
+	int32 SubmitToContextInternal(const TArray<float>& Vertices,
+								const TArray<int32>& Indices, const FString& MeshType, int* GeomIdOut);
 };

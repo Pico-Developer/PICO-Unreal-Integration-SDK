@@ -148,3 +148,40 @@ private:
 	LAYOUT_FIELD(FShaderResourceParameter, SceneTexture);
 	LAYOUT_FIELD(FShaderResourceParameter, SceneSampler);
 };
+
+/**
+* A pixel shader for rendering a textured screen element.
+*/
+class FPICOCubemapPS : public FGlobalShader
+{
+	DECLARE_EXPORTED_SHADER_TYPE(FPICOCubemapPS, Global, PICOOPENXRHMD_API);
+public:
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; }
+
+	FPICOCubemapPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) :
+		FGlobalShader(Initializer)
+	{
+		InTexture.Bind(Initializer.ParameterMap, TEXT("InTextureCube"), SPF_Mandatory);
+		InTextureSampler.Bind(Initializer.ParameterMap, TEXT("InTextureSampler"));
+		InFaceIndexParameter.Bind(Initializer.ParameterMap, TEXT("CubeFaceIndex"));
+	}
+	FPICOCubemapPS() {}
+
+	void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, const FTexture* Texture, int FaceIndex)
+	{
+		SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, Texture);
+		SetShaderValue(BatchedParameters, InFaceIndexParameter, FaceIndex);
+	}
+
+	void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, FRHISamplerState* SamplerStateRHI, FRHITexture* TextureRHI, int FaceIndex)
+	{
+		SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, SamplerStateRHI, TextureRHI);
+		SetShaderValue(BatchedParameters, InFaceIndexParameter, FaceIndex);
+	}
+
+private:
+	LAYOUT_FIELD(FShaderResourceParameter, InTexture);
+	LAYOUT_FIELD(FShaderResourceParameter, InTextureSampler);
+	LAYOUT_FIELD(FShaderParameter, InFaceIndexParameter);
+};

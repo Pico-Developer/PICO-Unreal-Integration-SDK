@@ -12,7 +12,7 @@
 class FDynamicResolutionStatePICO : public IDynamicResolutionState
 {
 public:
-	FDynamicResolutionStatePICO(class FHMDPICO* HMDPICO, float MinimumScale);
+	FDynamicResolutionStatePICO(class FHMDPICO* HMDPICO);
 
 	// ISceneViewFamilyScreenPercentage
 	virtual void ResetHistory() override;
@@ -33,5 +33,4 @@ private:
 	class FHMDPICO* PICOHMD = nullptr;
 	float ResolutionFraction;
 	float ResolutionFractionUpperBound;
-	float MinimumResolutionScale = 0.6f;
 };
